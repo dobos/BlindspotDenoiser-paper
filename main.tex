@@ -463,7 +463,6 @@ The measured residual-variance ratios are small. Even under the conservative wor
 \begin{figure}[t!]
 \centering
 \includegraphics[width=\textwidth]{figs/fig1_representative.pdf}
-% TODO[fig]: re-render with vertically stacked panels and axis/tick labels at caption font size; see commit msg.
 \caption{Representative low-S/N held-out spectrum near the faint end of the magnitude range ($T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, input $\mathrm{S/N}[y]\approx3$). \textbf{Top:} noisy input $y$ and clean reference $x$ on the full mask-pruned wavelength grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, with the residual $x-\hat{x}$ shown below; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Bottom:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum.}
 \label{fig:representative_spectrum}
 \end{figure}
@@ -542,7 +541,6 @@ The \mbox{O$_2$} A-band rows give a difficult window-specific stress test. This 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig3_caII_zoom_panels.pdf}
-% TODO[fig]: re-render with explicit per-bin markers (e.g. ax.scatter(wave[mask], flux, marker='o', ms=2)); current connecting lines are visual guides only on the mask-pruned grid.
 \caption{Ca\,\textsc{ii} triplet zoom for the same representative held-out spectrum as Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. Each panel overlays the noisy input $y$, the clean reference $x$, and the blindspot output $\hat{x}$. Markers indicate the individual sampled wavelength bins; connecting lines are visual guides only. In the $8542$~\AA{} panel, the apparent asymmetry of the clean reference is caused by the mask-pruned wavelength sampling around the line center, not by an asymmetric input line model. The blindspot reconstruction follows the depth and width of the Ca\,\textsc{ii} cores without flattening them toward the continuum.}
 \label{fig:caII_zoom}
 \end{figure}
