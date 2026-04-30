@@ -505,16 +505,16 @@ Table~\ref{tab:training_signal_ablation} reports an ablation by training signal 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Ablation by training signal on the held-out test split. Mean S/N is the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def} averaged over the held-out spectra under the same evaluation protocol as Table~\ref{tab:main_baselines}. The Median [$5\%, 95\%$] column reports the per-spectrum distribution over the held-out spectra (en-dash for ablations whose per-spectrum distribution has not yet been measured). The supervised U-Net row is an oracle reference because it requires paired clean targets unavailable to a deployed self-supervised system.}
+\caption{Ablation by training signal on the held-out test split. Mean S/N is the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def} averaged over the $10000$ held-out spectra under the same evaluation protocol as Table~\ref{tab:main_baselines}. The Median S/N [$5\%, 95\%$] column reports the per-spectrum distribution over the same held-out spectra. The supervised U-Net row is an oracle reference because it requires paired clean targets unavailable to a deployed self-supervised system.}
 \label{tab:training_signal_ablation}
 \begin{tabular}{llccc}
 \hline
 Training signal & Loss target & $\bar{\sigma}$ input & Mean S/N & Median S/N [$5\%, 95\%$] \\
 \hline
 Central-visible (no blindspot) & noisy $y$ & none & $7.8$ & $6.7$ [$3.0$, $14.5$] \\
-Blindspot, no $\bar{\sigma}$ input & noisy $y$ & none & $115$ & -- \\
+Blindspot, no $\bar{\sigma}$ input & noisy $y$ & none & $122$ & $108$ [$45$, $246$] \\
 \textbf{Blindspot $+$ scalar $\bar{\sigma}$} & noisy $y$ & scalar $\bar{\sigma}$ & $\mathbf{124}$ & $\mathbf{112}$ [$\mathbf{47}$, $\mathbf{253}$] \\
-Supervised U-Net (oracle) & clean $x$ & none & $157$ & -- \\
+Supervised U-Net (oracle) & clean $x$ & none & $155$ & $138$ [$56$, $318$] \\
 \hline
 \end{tabular}
 \end{table}
