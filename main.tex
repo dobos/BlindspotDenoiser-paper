@@ -463,7 +463,7 @@ The measured residual-variance ratios are small. Even under the conservative wor
 \begin{figure}[t!]
 \centering
 \includegraphics[width=\textwidth]{figs/fig1_representative.pdf}
-\caption{Representative low-S/N held-out spectrum near the faint end of the magnitude range ($T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, input $\mathrm{S/N}[y]\approx3$). \textbf{Left:} noisy input $y$ and clean reference $x$ on the full mask-pruned wavelength grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Center:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, with the residual $x-\hat{x}$ shown below; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Right:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum.}
+\caption{Representative low-S/N held-out spectrum near the faint end of the magnitude range ($T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, input $\mathrm{S/N}[y]\approx3$). \textbf{Top:} noisy input $y$ and clean reference $x$ on the full mask-pruned wavelength grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, with the residual $x-\hat{x}$ shown below; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Bottom:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum.}
 \label{fig:representative_spectrum}
 \end{figure}
 
@@ -505,16 +505,16 @@ Table~\ref{tab:training_signal_ablation} reports an ablation by training signal 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Ablation by training signal on the held-out test split. Mean S/N is the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def}, averaged over the $1000$ held-out spectra and $10$ independent noise realizations under the same evaluation protocol as Table~\ref{tab:main_baselines}. The supervised U-Net row is an oracle reference because it requires paired clean targets unavailable to a deployed self-supervised system.}
+\caption{Ablation by training signal on the held-out test split. Mean S/N is the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def} averaged over the held-out spectra under the same evaluation protocol as Table~\ref{tab:main_baselines}. The Median [$5\%, 95\%$] column reports the per-spectrum distribution over the held-out spectra (en-dash for ablations whose per-spectrum distribution has not yet been measured). The supervised U-Net row is an oracle reference because it requires paired clean targets unavailable to a deployed self-supervised system.}
 \label{tab:training_signal_ablation}
-\begin{tabular}{llcc}
+\begin{tabular}{llccc}
 \hline
-Training signal & Loss target & $\bar{\sigma}$ input & Mean S/N \\
+Training signal & Loss target & $\bar{\sigma}$ input & Mean S/N & Median S/N [$5\%, 95\%$] \\
 \hline
-Central-visible (no blindspot) & noisy $y$ & none & $7.8$ \\
-Blindspot, no $\bar{\sigma}$ input & noisy $y$ & none & $115$ \\
-\textbf{Blindspot $+$ scalar $\bar{\sigma}$} & noisy $y$ & scalar $\bar{\sigma}$ & $\mathbf{124}$ \\
-Supervised U-Net (oracle) & clean $x$ & none & $157$ \\
+Central-visible (no blindspot) & noisy $y$ & none & $7.8$ & $6.7$ [$3.0$, $14.5$] \\
+Blindspot, no $\bar{\sigma}$ input & noisy $y$ & none & $115$ & -- \\
+\textbf{Blindspot $+$ scalar $\bar{\sigma}$} & noisy $y$ & scalar $\bar{\sigma}$ & $\mathbf{124}$ & $\mathbf{112}$ [$\mathbf{47}$, $\mathbf{253}$] \\
+Supervised U-Net (oracle) & clean $x$ & none & $157$ & -- \\
 \hline
 \end{tabular}
 \end{table}
