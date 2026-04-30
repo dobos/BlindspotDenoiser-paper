@@ -417,7 +417,7 @@ The measured residual-variance ratios are small. Even under the conservative wor
 \begin{figure}[t!]
 \centering
 \includegraphics[width=\textwidth]{figs/fig1_representative.pdf}
-\caption{Representative low-S/N held-out spectrum, fixed to test index $336$: $T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, and input $\mathrm{S/N}[y]\approx3$. \textbf{Left:} noisy input $y$ and clean reference $x$ on the full mask-pruned grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, above the residual $x-\hat{x}$; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Right:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum.}
+\caption{Representative low-S/N held-out spectrum with $T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, and input $\mathrm{S/N}[y]\approx3$. \textbf{Left:} noisy input $y$ and clean reference $x$ on the full mask-pruned grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, above the residual $x-\hat{x}$; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Right:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum.}
 \label{fig:representative_spectrum}
 \end{figure}
 
@@ -452,9 +452,26 @@ The aggregate reconstruction number alone does not identify the mechanism. A noi
 
 The copy shortcut is ruled out structurally by the blindspot construction and numerically by an integrity audit. Section~\ref{sec:theory} shows that a centre-visible noisy-target objective admits the zero-loss solution $\hat{x}_{\lambda}=y_{\lambda}$. The reported model removes this pathway: every prediction $\hat{x}_{\lambda}$ is computed from features whose receptive field excludes $y_{\lambda}$. A perturbation audit at three wavelength positions on held-out spectra verifies that replacing $y_{\lambda}$ by either a cross-spectrum permutation or the per-spectrum mean changes the corresponding centre output by at most $3\times10^{-7}$, more than $400$ times below the $10^{-4}$ audit threshold; the full protocol and per-perturbation table are reported in Appendix~\ref{app:architecture_integrity}.
 
-The structural argument is enough to rule out the centre-visible copy solution within this model family: any same-input regression with a noisy target admits the zero-loss solution $\hat{x}_{\lambda}=y_{\lambda}$ at every pixel, and the blindspot construction removes the receptive-field dependence on $y_{\lambda}$ that this solution requires. We therefore do not run a centre-visible/noisy-target control as a competing reconstruction baseline in this manuscript; the integrity audit above already verifies, numerically and at three pixel positions, that no information from $y_{\lambda}$ reaches $\hat{x}_{\lambda}$ in the reported model.
-
 The smoothing and low-rank explanations are addressed by the validation-tuned references in Table~\ref{tab:main_baselines}: although every reference improves over the noisy input, none approach the blindspot reconstruction, ruling out generic low-pass filtering and projection onto a fixed linear template subspace as explanations of the gain. The scalar noise condition $\bar{\sigma}$ used by the blindspot model also cannot carry per-pixel line information: it is one number per spectrum, broadcast across wavelength, while the full pixelwise simulator uncertainty profile is not given to the network.
+
+Table~\ref{tab:training_signal_ablation} reports an ablation by training signal that verifies the copy argument empirically and bounds the self-supervised gain against a supervised oracle. Removing the blindspot and training the same architecture against noisy targets with the centre pixel visible collapses the held-out reconstruction to noisy-input scale, the trivial copy solution predicted by Section~\ref{sec:theory}. Removing the scalar $\bar{\sigma}$ input reduces the held-out S/N from $124$ to $115$, while a supervised U-Net trained against clean targets reaches $157$; the canonical noisy-only blindspot therefore recovers about four-fifths of the supervised oracle without paired clean targets.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Ablation by training signal on the held-out test split. Mean S/N is the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def}, averaged over the $1000$ held-out spectra and $10$ independent noise realizations under the same evaluation protocol as Table~\ref{tab:main_baselines}. The supervised U-Net row is an oracle reference because it requires paired clean targets unavailable to a deployed self-supervised system.}
+\label{tab:training_signal_ablation}
+\begin{tabular}{llcc}
+\hline
+Training signal & Loss target & $\bar{\sigma}$ input & Mean S/N \\
+\hline
+Centre-visible (no blindspot) & noisy $y$ & none & $7.8$ \\
+Blindspot, no $\bar{\sigma}$ input & noisy $y$ & none & $115$ \\
+\textbf{Blindspot $+$ scalar $\bar{\sigma}$} & noisy $y$ & scalar $\bar{\sigma}$ & $\mathbf{124}$ \\
+Supervised U-Net (oracle) & clean $x$ & none & $157$ \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Line-sensitive reconstruction diagnostics}
 \label{sec:results_physical}
