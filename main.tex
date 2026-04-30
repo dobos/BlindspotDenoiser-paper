@@ -10,6 +10,8 @@
 \definecolor{BlindspotBack}{HTML}{F5FAFF}
 \newcommand{\algkey}[1]{\textcolor{BlindspotBlue}{\textbf{#1}}}
 
+\newcommand{\ld}[1]{\textcolor{red}{\textbf{#1}}}
+
 \newcounter{algorithm}
 \renewcommand{\thealgorithm}{\arabic{algorithm}}
 \newcounter{protocol}
@@ -103,54 +105,57 @@
 
 
 \begin{abstract}
-Low-S/N stellar spectra are unavoidable for faint survey targets, and the absorption-line measurements used for target selection, radial-velocity estimation, and abundance work are among the first quantities to degrade. Real surveys do not provide paired clean references, so fully supervised denoising inherits a simulator-to-deployment dependency. We present a one-dimensional self-supervised blindspot denoiser for stellar spectra, in which each wavelength bin is predicted from its surrounding context while the target bin is withheld from the receptive field. In a survey-relevant simulated regime of medium-resolution spectra with heteroscedastic photon, sky, and read noise, the method raises the mean linear per-spectrum pixel-level reconstruction S/N on held-out test spectra from $7.8$ for the noisy input to $124$ for the blindspot output on the same spectra and noise realizations. It also preserves line structure, reducing the equivalent-width error of the \mbox{Ca\,\textsc{ii}} triplet, lowering the polarity-flip rate against the per-spectrum continuum, and improving reconstruction in the telluric \mbox{O$_2$} A-band window. The contribution is a simulated proof-of-principle for noise-only training of stellar-spectrum denoisers; real-survey validation, deployment under correlated sky and telluric residuals, and downstream science consequences are explicitly left as future work. Code is available at \url{https://github.com/ViskaWei/BlindSpotDenoiser}.
+Low-S/N stellar spectra are unavoidable for faint survey targets, and the absorption-line measurements used for target selection, radial-velocity estimation, and abundance work are among the first quantities to degrade. Real surveys do not provide paired clean references, so fully supervised denoising inherits a simulator-to-deployment dependency. We present a one-dimensional self-supervised blindspot denoiser for stellar spectra, in which each wavelength bin is predicted from its surrounding context while the target bin is withheld from the receptive field. In a survey-relevant simulated regime of medium-resolution spectra with heteroscedastic photon, sky, and read noise, the method raises the mean linear per-spectrum pixel-level reconstruction S/N on held-out test spectra from $7.8$ for the noisy input to $124$ for the blindspot output on the same spectra and noise realizations. It also preserves line structure, reducing the equivalent-width error of the \mbox{Ca\,\textsc{ii}} triplet, lowering the polarity-flip rate against the per-spectrum continuum \ld{-- what is polarity flip rate?}, and improving reconstruction \ld{-- improving compared to what?} in the telluric \mbox{O$_2$} A-band window. Our contribution is a simulated proof-of-principle for noise-only training of stellar-spectrum denoisers; real-survey validation, deployment under correlated sky and telluric residuals, as well as downstream scientific consequences are explicitly left as future work. The source code is available at \url{https://github.com/ViskaWei/BlindSpotDenoiser}.
 \end{abstract}
 
 \keywords{\uat{Stellar astronomy}{1583} --- \uat{Spectroscopy}{1558} --- \uat{Stellar spectral lines}{1630} --- \uat{Convolutional neural networks}{1938}}
 
 \section{Introduction}
 \label{sec:introduction}
-Galactic archaeology turns stellar spectra into radial velocities, atmospheric parameters, and elemental abundances that trace the formation and evolution of stellar populations. Large multiplexed surveys of resolved stars typically pre-select targets from imaging catalogs before their membership can be confirmed spectroscopically \citep{Dey2019_LegacySurveys,Majewski2017_APOGEE}, so many faint members of the resulting samples are observed near the low-S/N limit where line measurements become fragile. Those spectra directly limit target triage, follow-up strategy, and the scientific yield of the instrument. The effective SNR of the observations is further degraded by structured night-sky emission and wavelength-dependent atmospheric absorption \citep{Osterbrock1996_SkyAtlas,Hanuschik2003_SkyAtlas,Noll2012_ParanalSky}, both of which sit on top of the photon-noise floor that ultimately limits the recovery of the narrow line features carrying the astrophysically useful information \citep{Bouchy2001_RVLimit}. A denoiser is useful in this regime only if it raises the per-spectrum reconstruction S/N without erasing those line features; line preservation is therefore the success criterion that frames the rest of this paper.
+Galactic Archaeology analyses stellar spectra by measuring radial velocities, atmospheric parameters, and elemental abundances that trace the formation and evolution of stellar populations. Large multiplexed surveys of resolved stars typically pre-select targets from imaging catalogs before their membership can be confirmed spectroscopically \citep{Dey2019_LegacySurveys,Majewski2017_APOGEE}, so many faint members of the resulting samples are observed near the low-S/N limit, where line measurements become fragile. Low signal-to-noise spectra directly limit target triage, follow-up strategy, and the scientific yield of the instrument. The effective signal-to-noise of the observations is further degraded by structured night-sky emission and wavelength-dependent atmospheric absorption \citep{Osterbrock1996_SkyAtlas,Hanuschik2003_SkyAtlas,Noll2012_ParanalSky}, both of which sit on top of the photon-noise floor that ultimately limits the recovery of the narrow absorption line features that carry the astrophysically useful information \citep{Bouchy2001_RVLimit}. A denoiser is useful in this regime only if it raises the per-spectrum reconstruction signal-to-noise without erasing those line features -- line preservation is therefore the primary success criterion that frames the rest of this paper.
 
-The main obstacle for learning-based denoising in this regime is not architecture but supervision. Real survey data at the magnitudes targeted here do not provide paired clean references, so a fully supervised denoiser typically depends on synthetic noisy-clean pairs and inherits a simulator-to-deployment dependency \citep{Pal2024_denoising_autoencoder}. Classical template-fitting and physical label models match observed spectra against synthetic libraries and inherit the coverage limits of those libraries \citep{Koleva2009_ULySS,Ting2019_Payne}, while data-driven label models such as \textit{The Cannon} replace the synthetic library with labeled reference stars that span the target label space \citep{Ness2015_Cannon}. Each of these approaches relies in a different way on information that is not directly available from the noisy spectrum alone. A noisy-only training strategy that requires neither clean targets nor a strong external prior is therefore attractive --- if it can be shown to raise reconstruction S/N without erasing the line structure that later analyses depend on.
+The main obstacle for deep-learning-based denoising in the low signal-to-noise regime is not architecture, but the method of supervision. Real survey data at the magnitudes targeted here do not provide paired clean references \ld{ -- although training sets can be constructed from pairing short exposure data with coadds --}, so a fully supervised denoiser typically depends on synthetic noisy-clean pairs and inherits a simulator-to-deployment dependency \citep{Pal2024_denoising_autoencoder}. Classical template-fitting methods and label models trained to obtain physical parameters match observed spectra against synthetic libraries and inherit the coverage limits of those libraries \citep{Koleva2009_ULySS,Ting2019_Payne}, while data-driven label models such as \textit{The Cannon} replace the synthetic library with labeled reference stars that span the target label space \citep{Ness2015_Cannon}. Each of these approaches relies, in a different way, on information that is not directly available from the noisy spectrum alone. A noisy-only training strategy, that requires neither clean targets nor a strong external prior, is therefore attractive --- if it can be shown to raise reconstruction S/N without erasing the line structure that later analyses depend on.
 
-Self-supervised denoising avoids this dependency by replacing clean training targets with statistical structure in the noisy observations themselves; even paired noisy observations of the same scene suffice to recover the underlying clean signal under zero-mean noise \citep{lehtinen2018noise2noise}. Blindspot training pushes this further by predicting each wavelength bin from its surrounding context alone, withholding the target bin from the receptive field so that the noisy target cannot be copied through the network \citep{batson2019noise2self,Krull2019_blindspot,Laine2019_BSN}. The construction is well-developed for two-dimensional natural images, but stellar spectra are not images: they contain narrow absorption lines and wavelength-local correlations that do not automatically satisfy the pixelwise independence assumptions used by the classical self-supervised arguments. Whether blindspot prediction in the low-SNR stellar regime tracks those line features rather than smoothing them toward the local average is the question this paper addresses.
+Self-supervised denoising avoids the dependency on synthetic templates or labeled data by replacing clean training targets with statistical structure in the noisy observations themselves \ld{-- ???}; even paired noisy observations of the same stars suffice as a training set to recover the underlying clean signal under zero-mean noise \citep{lehtinen2018noise2noise}. Blindspot training pushes this further by predicting the flux in each wavelength bin from its surrounding context alone, withholding the target bin from the receptive field so that the noisy target cannot be copied through the network \citep{batson2019noise2self,Krull2019_blindspot,Laine2019_BSN}. The construction is well-developed for two-dimensional natural images, but stellar spectra are not images: they contain narrow absorption lines and wavelength-local correlations that do not automatically satisfy the pixel-wise independence assumptions \ld{-- the flux is correlated because it's a spectrum but also because of the line spread function. the variance of the flux is uncorrelated because we count the photons in each CCD pixel independently} used by the classical self-supervised arguments. Whether blindspot prediction in the low-SNR stellar regime tracks those line features, rather than smoothing them toward the local average, is the question this paper addresses.
 
 Our contributions are:
 \begin{itemize}
     \item A one-dimensional self-supervised blindspot denoiser for low-S/N stellar spectra, trained from noisy spectra only and evaluated against clean references only after training.
-    \item A canonical simulated target support --- continuum-normalized BOSZ-derived spectra at $R\!\approx\!5000$, $7100$--$8850$~\AA, magnitude $20.5$--$22.5$, and late-type stellar parameters matched to the motivating PFS-like sample.
+    \item A canonical simulated target support consisting of continuum-normalized BOSZ \ld{did you cite BOSZ earlier?} spectra at $R\!\approx\!5000$ in the wavelength range of $7100$--$8850$~\AA and magnitude range of $20.5$--$22.5$. We used stellar parameters typical to late-type stars which are of the primary interest of Galactic Archeology, and simulated a line spread function and noise characteristics typical to the Subaru PFS instrument.
     \item A direct measurement that this support lies in a small-$\gamma$ regime, where model-free context predictors leave residual variance far below the per-pixel noise variance.
     \item Held-out comparisons against validation-tuned classical filters, noisy-PCA, and a non-deployable clean-template PCA oracle, with linear reconstruction S/N retained as the primary headline metric.
     \item Line-preservation diagnostics evaluated alongside aggregate reconstruction error: Ca\,\textsc{ii} triplet equivalent-width error, continuum-relative polarity-flip rate, and a hard-window \mbox{O$_2$} A-band stress diagnostic.
 \end{itemize}
-The contribution is a simulated proof-of-principle within this late-type, faint-magnitude support; real-survey validation, correlated residuals, radial-velocity precision, stellar-label recovery, and abundance-sensitive downstream measurements are explicitly left for future work.
+The contribution is a simulated proof-of-principle within this late-type, faint-magnitude support; real-survey validation, correlated residuals, radial-velocity precision, stellar-label recovery, and abundance-sensitive downstream measurements are explicitly left for future work. \ld{this has been mentioned earlier - merge or delete}
 
 \section{Related Work}
 \label{sec:related_work}
-Self-supervised denoising replaces clean training targets with statistical structure in the noisy observations themselves. \citet{lehtinen2018noise2noise} showed that pairs of independent noisy views of the same scene suffice to recover the clean signal under zero-mean noise, removing the need for clean references at training time but still requiring a second observation. \citet{batson2019noise2self} reduced this requirement further by formulating self-supervised denoising as a $\mathcal{J}$-invariant prediction task on a single noisy frame, and \citet{Krull2019_blindspot} introduced a concrete single-image realization in which a randomly masked target pixel is predicted from its surrounding context so the noisy target cannot be copied through the receptive field. \citet{Laine2019_BSN} converted this masking principle into a feed-forward architecture by combining branches whose receptive fields are restricted to disjoint half-spaces and then offset, so that the prediction at each output position never depends on the input at the same position. \citet{Krull2020_PN2V} extended the framework with an explicit pixel-noise model and posterior inference rather than a single point estimate, while \citet{Xie2020_Noise2Same} revisited the underlying $\mathcal{J}$-invariance bound and replaced random masking with a self-consistency objective that does not require strict pixel exclusion. These methods establish the noisy-only training paradigm on two-dimensional natural images, but they leave two questions open for one-dimensional stellar spectra: whether the masked context retains enough information about the centre wavelength to support useful prediction (a regime question, addressed in Section~\ref{sec:theory} and quantified in Section~\ref{sec:results_gamma}), and whether the resulting estimator preserves the narrow absorption features that downstream stellar analysis depends on rather than smoothing them toward the local continuum (Section~\ref{sec:results_physical}).
+Self-supervised denoising replaces clean training targets with statistical structure in the noisy observations themselves. \ld{-- I think you could explain this a bit more in astronomer lingo, something like: replaced the information available in clean spectra with the information we can obtain from the noise statistics of repeated noisy observations} \citet{lehtinen2018noise2noise} showed that pairs of independent noisy views of the same scene suffice to recover the clean signal under zero-mean noise, removing the need for clean references at training time, but still requiring a second observation. \citet{batson2019noise2self} reduced this requirement further by formulating self-supervised denoising as a $\mathcal{J}$-invariant \ld{-- maybe explain this too} prediction task on a single noisy frame, and \citet{Krull2019_blindspot} introduced a concrete single-image realization in which a randomly masked target pixel is predicted from its surrounding context so the noisy target cannot be copied through the receptive field. \citet{Laine2019_BSN} converted this masking principle into a computationally efficient feed-forward architecture by combining branches whose receptive fields are restricted to disjoint half-spaces and then offset, so that the prediction at each output position never depends on the input at the same position. \citet{Krull2020_PN2V} extended the framework with an explicit pixel-noise model and posterior inference rather than a single point estimate, while \citet{Xie2020_Noise2Same} revisited the underlying $\mathcal{J}$-invariance bound and replaced random masking with a self-consistency objective that does not require strict pixel exclusion. These methods establish the noisy-only training paradigm on two-dimensional natural images, but they leave two questions open for one-dimensional stellar spectra: whether the masked context retains enough information about the central wavelength to support useful prediction (a regime question, addressed in Section~\ref{sec:theory} and quantified in Section~\ref{sec:results_gamma}), and whether the resulting estimator preserves the narrow absorption features that downstream stellar analysis depends on rather than smoothing them toward the local continuum (Section~\ref{sec:results_physical}).
 
-A separate line of work has applied neural denoisers directly to astronomical spectra, in all cases relying on simulator-supplied clean references. \citet{Pal2024_denoising_autoencoder} train a one-dimensional denoising autoencoder on paired noisy and clean simulated stellar spectra and show that the recovered spectra speed up template-fit initialization, at the cost of requiring synthetic clean targets at training time. \citet{Scourfield2023_AEgalaxies} apply the same supervised paradigm to galaxy spectra with a noise-augmented variational autoencoder and report lower emission-line flux residuals against PCA baselines. \citet{Kang2021_bayesian_spectrum_denoise} take a different route: rather than mapping noisy to clean directly, they learn a prior over clean stellar spectra from a high-S/N reference set and combine it with a generative noise model in a Bayesian denoising procedure, which still requires the high-S/N reference set during training. The common limitation across these approaches is that the supervisory signal is available only inside the simulator or inside a high-S/N reference catalogue, which is exactly the simulator-to-deployment dependency that motivates noisy-only training in this paper. Whether self-supervised blindspot training can match these reconstructions on stellar spectra, when judged jointly by aggregate reconstruction quality and by line-preservation diagnostics, has not previously been tested.
+A separate line of work has applied neural denoisers directly to astronomical spectra, in all cases relying on simulator-supplied clean references. \citet{Pal2024_denoising_autoencoder} train a one-dimensional denoising autoencoder on paired noisy and clean simulated stellar spectra and show that the recovered spectra speed up template-fit initialization, at the cost of requiring synthetic clean targets at training time. \citet{Scourfield2023_AEgalaxies} apply the same supervised paradigm to galaxy spectra with a noise-augmented variational autoencoder and report lower emission-line flux residuals against PCA baselines. \citet{Kang2021_bayesian_spectrum_denoise} take a different route: rather than mapping noisy to clean directly, they learn a prior over clean stellar spectra from a high-S/N reference set and combine it with a generative noise model in a Bayesian denoising procedure, which still requires the high-S/N reference set during training. The common limitation across these approaches is that the supervisory signal is available only inside the simulator or inside a high-S/N reference catalog, which is exactly the simulator-to-deployment dependency that motivates noisy-only training in this paper. Whether self-supervised blindspot training can match these reconstructions on stellar spectra, when judged jointly by aggregate reconstruction quality and by line-preservation diagnostics, has not previously been tested.
 
-Classical spectroscopic pipelines treat low-SNR observations through fitting rather than denoising. Cross-correlation against template libraries underpins radial-velocity and redshift estimation \citep{Tonry1979_xcorr,Kurtz1998_RVSAO}, full-spectrum template fitting recovers stellar kinematics and population weights \citep{Koleva2009_ULySS,Cappellari2017_pPXFUpdate}, and data-driven label models such as \textit{The Cannon} and \textit{The Payne} amortize stellar-parameter inference over learned representations of the template family \citep{Ness2015_Cannon,Ting2019_Payne}. These methods are powerful when their template assumptions hold, but at the magnitude and signal-to-noise regime targeted here they are limited by template fidelity and by the instability of the cross-correlation peak. They are therefore complementary to a denoiser rather than substitutes for it: the denoised spectra produced by the blindspot model are the kind of input on which template fitting and label inference become easier to run, and the line-preservation diagnostics in Section~\ref{sec:results_physical} are chosen to be informative for that downstream use.
+Classical spectroscopic pipelines treat low-SNR observations through template fitting rather than denoising. Cross-correlation with template libraries underpins radial-velocity estimation \citep{Tonry1979_xcorr,Kurtz1998_RVSAO}, full-spectrum template fitting \ld{-- isn't it the same as the first case - but you need to do it on an ensemble of course} recovers stellar kinematics and population weights \citep{Koleva2009_ULySS,Cappellari2017_pPXFUpdate}. Data-driven label models such as \textit{The Cannon} and \textit{The Payne} amortize stellar-parameter inference over learned representations of the template family \ld{I know what it' supposed to mean but I'm not sure if it's correct} \citep{Ness2015_Cannon,Ting2019_Payne}. These methods are powerful when their template assumptions hold, but at the magnitude and signal-to-noise regime targeted here, they are limited by template fidelity, \ld{parameter space coverage} and by the instability of the cross-correlation peak \ld{are we talking about the Cannon and the Payne here?}. They are therefore complementary to a denoiser rather than substitutes for it: the denoised spectra produced by the blindspot model are the kind of input on which template fitting and label inference become easier to run, and the line-preservation diagnostics in Section~\ref{sec:results_physical} are chosen to be informative for that downstream use.
 
-The contribution of this paper sits at the intersection of these three lines, not inside any one of them. From self-supervised denoising it inherits the blindspot construction and the requirement that the centre pixel never enter the prediction of itself; from neural spectrum denoising it inherits the goal of recovering line-sensitive structure at low SNR while removing the supervision dependency that limits deployment; and with respect to classical pipelines it is positioned as upstream preprocessing rather than as a competing inference step. Two questions follow that the rest of the paper addresses directly: whether one-dimensional medium-resolution stellar spectra occupy the small-$\gamma$ regime in which the masked context is informationally close to the full context (Equation~\ref{eq:gamma}, Section~\ref{sec:theory}, and Section~\ref{sec:results_gamma}), and whether the resulting reconstruction preserves narrow absorption features rather than buying its aggregate signal-to-noise gain by mean-reversion (Section~\ref{sec:results_physical}).
+The contribution of this paper sits at the intersection of these three lines, not inside any one of them. From self-supervised denoising it inherits the blindspot construction and the requirement that the central pixel never enters into the prediction of itself. From neural spectrum denoising it inherits the goal of recovering line-sensitive structures at low SNR while removing the supervision dependency that limits deployment. Moreover, with respect to classical pipelines, it is positioned as upstream pre-processing rather than as a competing inference step.
+
+Two questions follow that the rest of the paper addresses directly: whether one-dimensional medium-resolution stellar spectra occupy the small-$\gamma$ regime in which the masked context is informationally close to the full context (Equation~\ref{eq:gamma}, Section~\ref{sec:theory}, and Section~\ref{sec:results_gamma}), and whether the resulting reconstruction preserves narrow absorption features rather than buying its aggregate signal-to-noise gain by mean-reversion (Section~\ref{sec:results_physical}).
 
 \section{Methods}
 \label{sec:method}
+
 \subsection{Problem Formulation and Blindspot Objective}
 \label{sec:problem_formulation}
+
 Let $x\in\mathbb{R}^{L}$ be a clean spectrum and $y\in\mathbb{R}^{L}$ its noisy observation:
 \begin{equation}
     y_{\lambda} = x_{\lambda} + \epsilon_{\lambda},
     \qquad
     \epsilon_{\lambda} \sim \mathcal{N}(0,\sigma_{\lambda}^{2}),
-    \qquad \lambda = 1,\dots,L,
+    \qquad \lambda = 1,2,\dots, L.
     \label{eq:noise_model_scalar}
 \end{equation}
-The task is to learn a denoiser from noisy spectra only: during training, $y$ is observed and $x$ is not.
 
-A blindspot predictor estimates each wavelength bin from its surrounding context with the center bin excluded:
+The task is to learn a denoiser from noisy spectra only: during training, $y$ is observed and $x$ is not. A blindspot predictor estimates each wavelength bin from its surrounding context with the center bin excluded:
 \begin{equation}
     \hat{x}_{\lambda} = f_{\theta}(y_{-\lambda},\bar{\sigma}),
     \qquad
@@ -159,7 +164,7 @@ A blindspot predictor estimates each wavelength bin from its surrounding context
     \sqrt{\frac{1}{L}\sum_{k=1}^{L}\sigma_{k}^{2}},
     \label{eq:blindspot_prediction}
 \end{equation}
-Here $y_{-\lambda}$ denotes the receptive-field input after excluding $y_{\lambda}$, and $\hat{x}_{\lambda}$ is the point estimate returned by the network.
+Here $y_{-\lambda}$ denotes the receptive-field input after excluding $y_{\lambda}$, and $\hat{x}_{\lambda}$ is the point estimate returned by the network. \ld{what does $\theta$ in the subscript mean? why do you use the RMS of the noise and why not the per bin noise variance?}
 
 We train with a noisy-target Huber loss:
 \begin{equation}
@@ -174,16 +179,18 @@ We train with a noisy-target Huber loss:
     \end{cases}
     \label{eq:self_supervised_loss}
 \end{equation}
+\ld{-- maybe explain what this loss tries to catch}
 The optimization problem is therefore
 \begin{equation}
     \theta^\ast \in \arg\min_{\theta}\;\mathbb{E}_{y}\!\left[\mathcal{L}(\theta;y)\right],
     \label{eq:theta_star}
 \end{equation}
-and the denoised spectrum has entries $\hat{x}_{\lambda}=f_{\theta^\ast}(y_{-\lambda},\bar{\sigma})$. No clean spectrum is used by the training objective. Under the symmetric zero-mean per-pixel noise model of Equation~\ref{eq:noise_model_scalar} and a Huber breakpoint $\delta$ that is large relative to the typical fitted residual, this objective approaches the conditional mean of $x_{\lambda}$ given $y_{-\lambda}$; asymmetric or heavy-tailed noise, or a $\delta$ comparable to or smaller than the residual scale, would shift the optimum toward an outlier-attenuated location.
+and the denoised spectrum has entries $\hat{x}_{\lambda}=f_{\theta^\ast}(y_{-\lambda},\bar{\sigma})$ \ld{-- isn't it just Eq.~2?}. No clean spectrum, \ld{nor the pixel-wise variance of the noise} is used by the training objective. Under the symmetric zero-mean per-pixel noise model of Equation~\ref{eq:noise_model_scalar} and a Huber breakpoint $\delta$ that is large relative to the typical fitted residual, this objective approaches the conditional mean of $x_{\lambda}$ given $y_{-\lambda}$ \ld{-- is this $\mathbb{E}[p(\hat{x}_\lambda \vert y_\lambda)]$ ?}. We note, that asymmetric or heavy-tailed noise, or a $\delta$ comparable to or smaller than the residual scale, would shift the optimum toward an outlier-attenuated location.
 
 \subsection{Blindspot Algorithm}
 \label{sec:blindspot_algorithm}
-The forward pass enforces one invariant: the feature used to predict bin $\lambda$ is never computed from $y_{\lambda}$. We use two shifted causal branches. The left branch processes $y$ in wavelength order, so its feature at $\lambda$ depends only on $y_{<\lambda}$. The right branch processes the wavelength-reversed spectrum and is then reversed back, so its feature at $\lambda$ depends only on $y_{>\lambda}$. The prediction head receives only these two features; therefore no computational path carries $y_{\lambda}$ into $\hat{x}_{\lambda}$.
+
+The forward pass enforces one invariant: the feature used to predict the flux in bin $\lambda$ is never computed from $y_{\lambda}$. We use two shifted causal branches. The left branch processes $y$ in wavelength order, so its feature at $\lambda$ depends only on $y_{<\lambda}$. The right branch processes the wavelength-reversed spectrum and is then reversed back, so its feature at $\lambda$ depends only on $y_{>\lambda}$. The prediction head receives only these two features, therefore, no computational path carries $y_{\lambda}$ into $\hat{x}_{\lambda}$.
 
 \begin{algorithmblock}{Blindspot feature construction for one-dimensional spectra}
 \label{alg:blindspot_forward}
@@ -200,9 +207,11 @@ The forward pass enforces one invariant: the feature used to predict bin $\lambd
 \noindent\algkey{Output:} $\hat{x}$, where each $\hat{x}_{\lambda}$ depends on $y_{<\lambda}$ and $y_{>\lambda}$ but not on $y_{\lambda}$.
 \end{algorithmblock}
 
+\ld{Algorithm description is probably ok but no astronomer will get it. I don't get it. I think a network achitecture figure that explains how one branch of the network gets $<\lambda$ and another $\lambda<$ and how the two are later combined would be more useful.}
+
 \subsection{Theory and Information Bounds}
 \label{sec:theory}
-\paragraph{Q1: Why exclude $y_{\lambda}$ from the receptive field, and is the context alone sufficient?} If the center pixel is visible, the noisy-target objective has a zero-loss copy solution:
+\paragraph{Q1: Why exclude $y_{\lambda}$ from the receptive field, and is the context alone sufficient?} \ld{-- I'm afraid it's not astro journal style -- rephrase into a statement} If the center pixel is visible, the noisy-target objective has a zero-loss copy solution:
 \[
 \hat{x}_{\lambda}=y_{\lambda}
 \quad\Longrightarrow\quad
@@ -227,7 +236,8 @@ which gives
     \label{eq:consistency}
 \end{equation}
 The unpredictable noise washes out under the conditional expectation, leaving the context-conditioned clean signal as the optimal regression target.
-\paragraph{Q2: How much is lost by discarding $y_{\lambda}$?} Compare three local estimators of $x_{\lambda}$ under independent Gaussian noise: the raw pixel $y_{\lambda}$, the blindspot context-only estimator, and the full estimator combining both. With $\sigma^{2}=\mathrm{Var}(\epsilon_{\lambda})$ and $\tau^{2}:=\mathrm{Var}(x_{\lambda}\mid\Omega_{\lambda})$, define
+
+\paragraph{Q2: How much is lost by discarding $y_{\lambda}$?} \ld{same as above. what about this? To asses how much information is lost by discarding $y_\lambda$ from the prediction, let us compare...} Compare three local estimators of $x_{\lambda}$ under independent Gaussian noise: the raw pixel $y_{\lambda}$, the blindspot context-only estimator, and the full estimator combining both. With $\sigma^{2}=\mathrm{Var}(\epsilon_{\lambda})$ and $\tau^{2}:=\mathrm{Var}(x_{\lambda}\mid\Omega_{\lambda})$, define
 \begin{equation}
     \gamma \;:=\; \tau^{2}/\sigma^{2}.
     \label{eq:gamma}
@@ -251,7 +261,7 @@ so the informative ratios depend only on $\gamma$:
     \label{eq:theory_ratios}
 \end{equation}
 As $\gamma\!\to\!0$ the blindspot estimator tracks the full one almost exactly ($R_{\rm BS}/R_{\rm full}\!\to\!1$); when $\gamma\gtrsim 1$ the center pixel carries information the context cannot supply, and blindspot training should not be expected to perform well.
-\paragraph{Our case.} Stellar spectra are smooth functions of wavelength: continuum-normalized flux varies on scales much wider than the per-pixel sampling, and absorption lines are broadened by the instrumental line-spread function across many pixels. The neighboring bins therefore carry nearly all the information about a missing center bin, leaving very little residual variance ($\tau^{2}\!\ll\!\sigma^{2}$), so $\gamma$ should be small. We verify this premise directly on held-out clean BOSZ spectra: model-free context predictors give a conservative upper-tail scale of order $10^{-3}$, with the full per-estimator measurement table given in Appendix~\ref{app:controls_gamma}. We therefore use the small-$\gamma$ argument as a regime statement for this simulated data set, not as an unconditional guarantee beyond it.
+\paragraph{Our case.} Stellar spectra are smooth functions of wavelength: continuum-normalized flux varies \ld{I'd say correlated} on scales much wider than the per-pixel \ld{wavelength} sampling \ld{the correlation scale depends on the physics (dwarf stars have broad lines) but also on the instrument (line spread function); the latter is just 4 pixels FWHM or similar. so it would be interesting to compare the performance on dwarf stars and giants with narrow lines}, and absorption lines are broadened by the instrumental line-spread function across many pixels. The neighboring bins, therefore, carry nearly all the information about a missing center bin, leaving very little residual variance ($\tau^{2}\!\ll\!\sigma^{2}$), so $\gamma$ should be small. We verify this premise directly on held-out clean BOSZ spectra: model-free context predictors give a conservative upper-tail scale of order $10^{-3}$ \ld{too much ML lingo for an astro paper}, with the full per-estimator measurement table given in Appendix~\ref{app:controls_gamma}. We therefore use the small-$\gamma$ argument as a regime statement for this simulated data set, not as an unconditional guaranty beyond it.
 
 \section{Implementation}
 \label{sec:implementation}
@@ -259,13 +269,13 @@ As $\gamma\!\to\!0$ the blindspot estimator tracks the full one almost exactly (
 \label{sec:data_noise}
 
 \paragraph{Data.}
-The experiment uses simulated one-dimensional observations derived from the BOSZ high-resolution synthetic stellar grid \citep{Bohlin2017}, based on ATLAS9 atmospheres \citep{Kurucz1979,Meszaros2012}. Each clean template is mapped to the medium-resolution setup in Table~\ref{tab:data_summary} and continuum-normalized before noise is added. The magnitude and stellar-parameter ranges in Table~\ref{tab:data_summary} match the motivating Subaru Prime Focus Spectrograph (PFS) medium-resolution stellar target sample: faint late-type spectra that remain informative despite being strongly noise dominated.
+The experiment uses simulated one-dimensional observations derived from the BOSZ high-resolution synthetic stellar grid \citep{Bohlin2017}, based on ATLAS9 atmospheres \citep{Kurucz1979,Meszaros2012}. Each clean template is mapped to the medium-resolution setup in Table~\ref{tab:data_summary} and continuum-normalized before noise is added. \ld{I'm  not sure what you're doing is not correct. You calculate the noise from the total flux = object + sky, you just assume Poison noise. When you normalize with the continuum (where are you taking the continuum from anyway) you also have to normalize $\sigma$ of the noise and yes, then you can apply it after normalization.} The magnitude and stellar-parameter ranges in Table~\ref{tab:data_summary} match the motivating Subaru Prime Focus Spectrograph (PFS) \ld{you always resolve abbreviations at first mention and you use it everywhere after} medium-resolution stellar target sample: faint late-type spectra that remain informative despite being strongly noise dominated.
 
 \begin{table}[!ht]
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
-\caption{Canonical simulated regime used in the main text. Input S/N is the per-spectrum linear ratio $\|x\|_2/\|x-y\|_2$, the same form reported as $124$ for the reconstruction $\mu_x$.}
+\caption{Canonical simulated regime used in the main text. Input S/N is the per-spectrum linear ratio $\|x\|_2/\|x-y\|_2$, the same form reported as $124$ \ld{it must have a distribution, don't just quote numbers} for the reconstruction $\mu_x$.}
 \begin{tabular}{ll}
 \hline
 \textbf{Quantity} & \textbf{Value} \\
@@ -273,15 +283,17 @@ The experiment uses simulated one-dimensional observations derived from the BOSZ
 Spectral source & BOSZ synthetic stellar grid; ATLAS9 atmospheres \\
 Wavelength range & $7100$--$8850$~\AA \\
 Resolving power & $R \approx 5000$ \\
-Magnitude bin & $\mathrm{mag} \in [20.5,\,22.5]$ \\
+Magnitude range & $\mathrm{mag} \in [20.5,\,22.5]$ \\
 Stellar-parameter support & $T_{\rm eff}\in[3500,6000]$~K; $\log g\in[1,5]$; $[\mathrm{M}/\mathrm{H}]\in[-2.5,0.75]$ \\
-Train / val / test spectra & $200{,}000$ / $1{,}000$ / $1{,}000$ \\
+Train / validation / test spectra & $200{,}000$ / $1{,}000$ / $1{,}000$ \\
 Held-out noise realizations & $10$ per test spectrum \\
 Input S/N (Equation~\ref{eq:snr_def}, $X{=}y$) & range $[2.50,\,15.6]$, mean $7.8$, median $7.8$ \\
 \hline
 \end{tabular}
 \label{tab:data_summary}
 \end{table}
+
+\ld{what's $X=y$ is Tab~1? Maybe put comment into footnote.}
 
 \paragraph{Noise Model.}
 The simulator supplies a wavelength grid, clean flux $x$, noisy flux $y$, and per-pixel uncertainty vector. Its per-bin observational variance is
@@ -298,7 +310,7 @@ The simulator supplies a wavelength grid, clean flux $x$, noisy flux $y$, and pe
 The three terms encode object photon noise, structured sky background, and detector read noise after the throughput and sky model. The full pixelwise $\sigma_{\lambda}$ profile is used only to draw $\epsilon_{\lambda}$ in Equation~\ref{eq:noise_model_scalar}; it is not given to the denoiser, because it would expose location-specific simulator information. The network receives only the scalar noise summary $\bar{\sigma}$ in Equation~\ref{eq:blindspot_prediction}.
 
 \paragraph{Evaluation.}
-The clean reference $x$ is withheld during training and used only for evaluation. All main-text metrics use one validation-selected model and one metric definition per column. Per-spectrum metrics are averaged across spectra within each held-out noise realization and then across realizations; reported $\pm$ values are $95\%$ confidence intervals over the realizations in Table~\ref{tab:data_summary}.
+The clean reference $x$ is withheld during training and used only for evaluation. All main-text metrics \ld{what is main-text metric?} use one validation-selected model and one metric definition per column. Per-spectrum metrics are averaged across spectra within each held-out noise realization and then across realizations; reported $\pm$ values are $95\%$ confidence intervals over the realizations in Table~\ref{tab:data_summary}.
 
 We use a single canonical reconstruction-S/N definition throughout. Writing $X\in\{y,\hat{x}\}$ for either the noisy input or the blindspot output evaluated against the clean reference $x$,
 \begin{equation}
@@ -313,9 +325,9 @@ We use a single canonical reconstruction-S/N definition throughout. Writing $X\i
     20\log_{10}\!\mathrm{S/N}(X).
     \label{eq:snr_def}
 \end{equation}
-Whenever reconstruction S/N is reported below, it is this same per-spectrum quantity evaluated on the held-out clean reference. The dB form differs from $10\log_{10}[\mathrm{Var}_{\lambda}(x)/\mathrm{Var}_{\lambda}(x-X)]$ only by the choice between $\ell_{2}$-norm and per-spectrum variance for the same denominator; we report the $\ell_{2}$-norm form everywhere.
+Whenever reconstruction S/N is reported below, it is this same per-spectrum quantity evaluated on the held-out clean reference. The dB form differs from $10\log_{10}[\mathrm{Var}_{\lambda}(x)/\mathrm{Var}_{\lambda}(x-X)]$ \ld{isn't something wrong here with the $\lambda$ index? or do you mean per-pixel and not per spectrum?} only by the choice between $\ell_{2}$-norm and per-spectrum variance for the same denominator; we report the $\ell_{2}$-norm form everywhere.
 
-Equivalent width (EW) measures a spectral feature by integrating the fractional line depression relative to its continuum. For a spectrum $X$ over a line window $[\lambda_1,\lambda_2]$,
+Equivalent width (EW) measures a spectral feature by integrating the fractional line depression \ld{absorption} relative to the continuum \ld{are you using the theoretical continuum or some upper envelope spline?}. For a spectrum $X$ \ld{what is $X$ here, still $X\in\{y,\hat{x}\}$?} over a line window \ld{wavelength interval centered on a line} $[\lambda_1,\lambda_2]$,
 \begin{equation}
     \mathrm{EW}(X)
     \;:=\;
@@ -325,7 +337,8 @@ Equivalent width (EW) measures a spectral feature by integrating the fractional 
     \right)\,d\lambda.
     \label{eq:equivalent_width}
 \end{equation}
-Because all spectra in this experiment are evaluated on the same continuum-normalized grid, $F_{\mathrm{cont},X}(\lambda)=1$ in the implementation and $\mathrm{EW}_X=\int_{\lambda_1}^{\lambda_2}\bigl(1-X(\lambda)\bigr)\,d\lambda$. The relative EW error against the clean reference is
+\ld{-- using $X$ in the subscript of $F_X$ is confusing. We usually write $F_\lambda$ or $F_\nu$ which are flux per wavelength and flux per frequency so one might think this formula is for both which is not. Maybe use different notation.}
+Because all spectra in this experiment are evaluated on the same continuum-normalized grid, \ld{just write we simulate normalized spectra} $F_{\mathrm{cont},X}(\lambda)=1$ in the implementation and $\mathrm{EW}_X=\int_{\lambda_1}^{\lambda_2}\bigl(1-X(\lambda)\bigr)\,d\lambda$. The relative EW error against the clean reference is
 \begin{equation}
     \epsilon_{\mathrm{EW}}(X)
     \;:=\;
@@ -334,7 +347,7 @@ Because all spectra in this experiment are evaluated on the same continuum-norma
     \label{eq:ew_relative_error}
 \end{equation}
 
-Continuum-relative polarity measures whether each informative pixel remains on the same side of the per-spectrum continuum proxy as the clean flux. Unlike EW, which integrates a fixed line window, this statistic counts sign errors in local contrast and therefore detects line filling or contrast inversion at the pixel level. Let $m_s=\operatorname{median}_{\lambda}x_s(\lambda)$ and define
+Continuum-relative polarity measures whether each informative pixel remains on the same side of the per-spectrum continuum proxy \ld{what is a per-spectrum continuum proxy?} as the clean flux. \ld{maybe mention this earlier, see my earlier comments} Unlike EW, which integrates a fixed line window, this statistic counts sign errors in local contrast and, therefore, detects line filling or contrast inversion at the pixel level. Let $m_s=\operatorname{median}_{\lambda}x_s(\lambda)$ and define
 \begin{equation}
 \begin{aligned}
     \mathcal{P}
@@ -358,11 +371,11 @@ Continuum-relative polarity measures whether each informative pixel remains on t
 
 The four headline metrics are:
 \begin{itemize}\itemsep0pt\topsep2pt
-\item \textbf{Reconstruction S/N}: Equation~\ref{eq:snr_def}, evaluated over all wavelength bins.
-\item \textbf{Ca\,\textsc{ii} EW error}: Equation~\ref{eq:ew_relative_error} on $\mathcal{W}_{c}=\{\lambda:|\lambda-c|\leq6\,\text{\AA}\}$ for $c\in\{8498,8542,8662\}$~\AA; reported as per-line medians over spectra and their triplet mean.
+\item \textbf{Reconstruction S/N}: Equation~\ref{eq:snr_def}, evaluated over all wavelength bins \ld{of the denoised spectrum}.
+\item \textbf{Ca\,\textsc{ii} EW error}: Equation~\ref{eq:ew_relative_error} on $\mathcal{W}_{c}=\{\lambda:|\lambda-c|\leq6\,\text{\AA}\}$ for $c\in\{8498,8542,8662\}$~\AA; reported as per-line medians over spectra and their triplet mean \ld{what is triplet mean? Are you averaging out the EW of the three CaII lines?}.
 \item \textbf{Polarity-flip rate}: Equation~\ref{eq:polarity_flip}, reported on $\mathcal{P}$, $\mathcal{P}_{-}$, and $\mathcal{P}_{+}$.
 \item \textbf{Telluric S/N}: Equation~\ref{eq:snr_def} restricted to
-$\mathcal{W}_{\mathrm{O}_2}=\{\lambda:7590\leq\lambda\leq7700\,\text{\AA}\}$. Absolute values of this window-restricted statistic on the noisy input are well below unity and the linear-form S/N can become negative on the dB scale, because in the continuum-normalized representation the A-band window is dominated by sub-continuum absorption rather than continuum signal, so the numerator $\lVert x\rVert_{2}$ restricted to that window is small relative to the per-pixel noise scale.
+$\mathcal{W}_{\mathrm{O}_2}=\{\lambda:7590\leq\lambda\leq7700\,\text{\AA}\}$. Absolute values of this window-restricted statistic on the noisy input are well below unity and the linear-form S/N can become negative on the dB scale, because in the continuum-normalized representation the A-band window is dominated by sub-continuum absorption \ld{???} rather than continuum signal, so the numerator $\lVert x\rVert_{2}$ restricted to that window is small relative to the per-pixel noise scale \ld{so, do you mean the noise in this wavelength interval is dominated by the noise from sky pixels so reconstructing the flux from them is not possible?}.
 \end{itemize}
 
 \paragraph{Training.}
@@ -417,7 +430,7 @@ The measured residual-variance ratios are small. Even under the conservative wor
 \begin{figure}[t!]
 \centering
 \includegraphics[width=\textwidth]{figs/fig1_representative.pdf}
-\caption{Representative low-S/N held-out spectrum with $T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, and input $\mathrm{S/N}[y]\approx3$. \textbf{Left:} noisy input $y$ and clean reference $x$ on the full mask-pruned grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, above the residual $x-\hat{x}$; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Right:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum.}
+\caption{Representative low-S/N held-out spectrum, fixed to test index $336$ \ld{what's index 336?}: $T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, and input $\mathrm{S/N}[y]\approx3$. \textbf{Left:} noisy input $y$ and clean reference $x$ on the full mask-pruned grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, above the residual $x-\hat{x}$; this spectrum has $\mathrm{S/N}[\hat{x}]\approx115$. \textbf{Right:} Ca\,\textsc{ii} triplet zoom, where the line-restricted statistic is $\mathrm{S/N}[\hat{x}_{\rm Ca\,II}]\approx51$. The output tracks the narrow Ca\,\textsc{ii} cores rather than filling them toward the continuum. \ld{This figure needs work. Axis labels have to use the same size font as Figure captions. You can also put them under each other to have better resolution in wavelength.}}
 \label{fig:representative_spectrum}
 \end{figure}
 
@@ -452,26 +465,9 @@ The aggregate reconstruction number alone does not identify the mechanism. A noi
 
 The copy shortcut is ruled out structurally by the blindspot construction and numerically by an integrity audit. Section~\ref{sec:theory} shows that a centre-visible noisy-target objective admits the zero-loss solution $\hat{x}_{\lambda}=y_{\lambda}$. The reported model removes this pathway: every prediction $\hat{x}_{\lambda}$ is computed from features whose receptive field excludes $y_{\lambda}$. A perturbation audit at three wavelength positions on held-out spectra verifies that replacing $y_{\lambda}$ by either a cross-spectrum permutation or the per-spectrum mean changes the corresponding centre output by at most $3\times10^{-7}$, more than $400$ times below the $10^{-4}$ audit threshold; the full protocol and per-perturbation table are reported in Appendix~\ref{app:architecture_integrity}.
 
+The structural argument is enough to rule out the centre-visible copy solution within this model family: any same-input regression with a noisy target admits the zero-loss solution $\hat{x}_{\lambda}=y_{\lambda}$ at every pixel, and the blindspot construction removes the receptive-field dependence on $y_{\lambda}$ that this solution requires. We therefore do not run a centre-visible/noisy-target control as a competing reconstruction baseline in this manuscript; the integrity audit above already verifies, numerically and at three pixel positions, that no information from $y_{\lambda}$ reaches $\hat{x}_{\lambda}$ in the reported model.
+
 The smoothing and low-rank explanations are addressed by the validation-tuned references in Table~\ref{tab:main_baselines}: although every reference improves over the noisy input, none approach the blindspot reconstruction, ruling out generic low-pass filtering and projection onto a fixed linear template subspace as explanations of the gain. The scalar noise condition $\bar{\sigma}$ used by the blindspot model also cannot carry per-pixel line information: it is one number per spectrum, broadcast across wavelength, while the full pixelwise simulator uncertainty profile is not given to the network.
-
-Table~\ref{tab:training_signal_ablation} reports an ablation by training signal that verifies the copy argument empirically and bounds the self-supervised gain against a supervised oracle. Removing the blindspot and training the same architecture against noisy targets with the centre pixel visible collapses the held-out reconstruction to noisy-input scale, the trivial copy solution predicted by Section~\ref{sec:theory}. Removing the scalar $\bar{\sigma}$ input reduces the held-out S/N from $124$ to $115$, while a supervised U-Net trained against clean targets reaches $157$; the canonical noisy-only blindspot therefore recovers about four-fifths of the supervised oracle without paired clean targets.
-
-\begin{table}[htbp]
-\centering
-\small
-\caption{Ablation by training signal on the held-out test split. Mean S/N is the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def}, averaged over the $1000$ held-out spectra and $10$ independent noise realizations under the same evaluation protocol as Table~\ref{tab:main_baselines}. The supervised U-Net row is an oracle reference because it requires paired clean targets unavailable to a deployed self-supervised system.}
-\label{tab:training_signal_ablation}
-\begin{tabular}{llcc}
-\hline
-Training signal & Loss target & $\bar{\sigma}$ input & Mean S/N \\
-\hline
-Centre-visible (no blindspot) & noisy $y$ & none & $7.8$ \\
-Blindspot, no $\bar{\sigma}$ input & noisy $y$ & none & $115$ \\
-\textbf{Blindspot $+$ scalar $\bar{\sigma}$} & noisy $y$ & scalar $\bar{\sigma}$ & $\mathbf{124}$ \\
-Supervised U-Net (oracle) & clean $x$ & none & $157$ \\
-\hline
-\end{tabular}
-\end{table}
 
 \subsection{Line-sensitive reconstruction diagnostics}
 \label{sec:results_physical}
@@ -512,7 +508,7 @@ The \mbox{O$_2$} A-band rows give a difficult window-specific stress test. This 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig3_caII_zoom_panels.pdf}
-\caption{Ca\,\textsc{ii} triplet zoom for the same representative held-out spectrum as Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. Each panel overlays the noisy input $y$, the clean reference $x$, and the blindspot output $\hat{x}$. The blindspot reconstruction follows the depth and width of the Ca\,\textsc{ii} cores without flattening them toward the continuum.}
+\caption{Ca\,\textsc{ii} triplet zoom for the same representative held-out spectrum as Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. Each panel overlays the noisy input $y$, the clean reference $x$, and the blindspot output $\hat{x}$. The blindspot reconstruction follows the depth and width of the Ca\,\textsc{ii} cores without flattening them toward the continuum. \ld{-- How come the clean reference is so asymmetric in the middle plot? Wide pixels? Maybe you can use dots on top of the lines to visualize the binning.}}
 \label{fig:caII_zoom}
 \end{figure}
 
@@ -550,9 +546,15 @@ In this simulated target support, noisy-only blindspot training raises the mean 
 \label{sec:conclusion}
 This study establishes a narrow but useful point: blindspot self-supervision can act as a credible denoising constraint for simulated low-S/N stellar spectra when clean targets are absent. The result is not only that the learned estimator improves a reconstruction score on withheld spectra. It is that the improvement survives the measurements that would make a denoiser scientifically suspect if it merely smoothed toward the continuum: absorption features remain usable, sign mistakes around the continuum are reduced, and a difficult atmospheric window is not treated as disposable background. In that sense the blindspot condition is doing more than regularization by architecture. It supplies an observationally plausible training signal in the regime where the target value itself cannot be trusted as input, and where paired clean spectra would normally have to be imported from a simulator.
 
-The claim is deliberately bounded. The spectra are continuum-normalized, drawn from the same synthetic support as the benchmark, and corrupted by independent, zero-mean binwise noise. Within that setting, withholding the centre bin gives enough neighboring context for the network to recover stable spectral structure without learning the identity shortcut. Outside that setting, the same mechanism can fail for reasons that are not incidental: correlated subtraction residuals, detector artifacts, mismatched atmospheric absorption, or spectra with intrinsically higher local ambiguity can all make the context-conditioned target biased or underdetermined. The method should therefore be read as a deployment constraint with demonstrated in-support value, not as evidence that any survey spectrum can be cleaned without consequence.
+The mechanism rests on a controlled assumption: that withholding the centre bin makes the context-conditioned target unbiased only when binwise noise is independent and zero-mean. Within the synthetic support of the benchmark, that condition holds, and the network recovers stable spectral structure without learning the identity shortcut. Outside it, correlated subtraction residuals, atmospheric mismatch, or locally ambiguous structure can violate the assumption and bias reconstructions.
 
-The practical implication is that clean-reference scarcity need not force denoising to be fully supervised, provided the noise assumptions and spectral support are made explicit and audited. The next boundary is the behavior of this constraint under real survey residuals and its effect on downstream stellar inference.
+The practical implication is that clean-reference scarcity need not force denoising to be fully supervised, provided the noise assumptions and spectral support are made explicit and audited. Real survey residuals and downstream stellar inference are the next boundary at which this constraint must either retain its discipline or reveal its limit.
+
+% This study establishes a narrow but useful point: blindspot self-supervision can act as a credible denoising constraint for simulated low-S/N stellar spectra when clean targets are absent. The result is not only that the learned estimator improves a reconstruction score on withheld spectra. It is that the improvement survives the measurements that would make a denoiser scientifically suspect if it merely smoothed toward the continuum: absorption features remain usable, sign mistakes around the continuum are reduced, and a difficult atmospheric window is not treated as disposable background. In that sense the blindspot condition is doing more than regularization by architecture. It supplies an observationally plausible training signal in the regime where the target value itself cannot be trusted as input, and where paired clean spectra would normally have to be imported from a simulator.
+
+% The claim is deliberately bounded. The spectra are continuum-normalized, drawn from the same synthetic support as the benchmark, and corrupted by independent, zero-mean binwise noise. Within that setting, withholding the centre bin gives enough neighboring context for the network to recover stable spectral structure without learning the identity shortcut. Outside that setting, the same mechanism can fail for reasons that are not incidental: correlated subtraction residuals, detector artifacts, mismatched atmospheric absorption, or spectra with intrinsically higher local ambiguity can all make the context-conditioned target biased or underdetermined. The method should therefore be read as a deployment constraint with demonstrated in-support value, not as evidence that any survey spectrum can be cleaned without consequence.
+
+% The practical implication is that clean-reference scarcity need not force denoising to be fully supervised, provided the noise assumptions and spectral support are made explicit and audited. The next boundary is the behavior of this constraint under real survey residuals and its effect on downstream stellar inference.
 
 \begin{acknowledgments}
 This work is supported by the generosity of Eric and Wendy Schmidt, by recommendation of the Schmidt Futures program.
@@ -750,7 +752,7 @@ This appendix checks that the reconstruction-S/N gain of Section~\ref{sec:result
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.6\linewidth]{figs/appendix/fig_ew_residual_std.pdf}
-\caption{Equivalent-width preservation across diagnostic lines and input S/N. Standard deviation of the EW relative error as a function of input S/N for the TiO band near $7650$~\AA{} and the three Ca\,\textsc{ii} triplet lines (solid: denoised; dotted: noisy). The denoised dispersion is reduced by an order of magnitude in the lowest-S/N bin and the gain narrows monotonically as input S/N rises, so the recovery is most useful where the noisy measurement is least informative; lines with intrinsically larger EW recover more cleanly than the weaker TiO band, consistent with line strength governing recoverability.}
+\caption{Equivalent-width preservation across diagnostic lines and input S/N. Standard deviation of the EW relative error as a function of input S/N for the TiO band near $7650$~\AA{} and the three Ca\,\textsc{ii} triplet lines (solid: denoised; dotted: noisy). The denoised dispersion is reduced by an order of magnitude in the lowest-S/N bin and the gain narrows monotonically as input S/N rises, so the recovery is most useful where the noisy measurement is least informative; lines with intrinsically larger EW recover more cleanly than the weaker TiO band, consistent with line strength governing recoverability. \ld{Is SD standard deviation?}}
 \label{fig:appendix_ew_panel}
 \end{figure}
 
