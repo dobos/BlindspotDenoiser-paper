@@ -457,7 +457,7 @@ Worst of three families & $2.81\times10^{-4}$ & $1.00\times10^{-3}$ & $6.70\time
 
 The measured residual-variance ratios are small. Even under the conservative worst-of-three aggregation, the population $95$th percentile of $\gamma$ is $1.00\times10^{-3}$; under the median-of-three aggregation it is more than an order of magnitude smaller. The expected local peaks occur in the strongest line cores, with the largest listed value $6.70\times10^{-3}$ at Ca\,\textsc{ii} $8542$~\AA. The $\gamma\!\sim\!10^{-3}$ scale used in Section~\ref{sec:theory} should therefore be read as an upper-tail or line-core scale, not as the population median. In this simulated target support, the wavelength context contains nearly all information needed to predict a withheld bin, while the central-pixel noise remains unavailable to the blindspot estimator.
 
-\subsection{Held-out reconstruction over classical and low-rank baselines}
+\subsection{Self-supervised reconstruction at low signal-to-noise}
 \label{sec:results_denoising}
 
 \begin{figure}[t!]
@@ -467,29 +467,27 @@ The measured residual-variance ratios are small. Even under the conservative wor
 \label{fig:representative_spectrum}
 \end{figure}
 
-Figure~\ref{fig:representative_spectrum} shows the qualitative behaviour of the frozen blindspot model on a low-S/N metal-poor giant near the faint end of the magnitude bin. The input fluctuations are comparable to, or larger than, the Ca\,\textsc{ii} line depths, but the blindspot output follows the clean line cores and suppresses the pixel-scale noise. Table~\ref{tab:main_baselines} quantifies the same reconstruction problem over the full held-out test set.
+Trained without any clean target spectra, the blindspot model raises the per-spectrum reconstruction statistic from $\mathrm{S/N}\!=\!7.8$ on the noisy input to $124$ on held-out test spectra --- a factor of about $16$. Figure~\ref{fig:representative_spectrum} shows what this looks like at the faint end of the magnitude bin, where the input pixel fluctuations are larger than the Ca\,\textsc{ii} line depths and individual lines are not visible by eye: the output traces the narrow line cores rather than smoothing them toward the continuum, even though no clean spectrum entered training.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Aggregate reconstruction quality on the held-out test split. The Mean S/N column reports the linear per-spectrum reconstruction statistic in Equation~\ref{eq:snr_def}, averaged over the $1000$ held-out spectra and $10$ independent noise realizations. The Median [$5\%, 95\%$] column reports the per-spectrum distribution over the held-out spectra. Classical and PCA hyperparameters are selected on the validation split. The clean-template PCA row is an oracle reference because it is fit on noiseless templates and is not deployable when only noisy survey spectra are available. The blindspot row is trained from noisy spectra only; clean spectra enter only this evaluation.}
+\caption{Held-out reconstruction quality. Mean and median per-spectrum reconstruction S/N (Equation~\ref{eq:snr_def}) on $1000$ test spectra with $10$ noise realizations each. The clean-template PCA oracle is fit on noiseless training spectra and is not a deployable comparison; it bounds what a fixed-rank linear estimator can extract with access to clean training data. Per-baseline tuning grids and configurations are listed in Appendix~\ref{app:controls_gamma}.}
 \label{tab:main_baselines}
-\begin{tabular}{lllcc}
+\begin{tabular}{llcc}
 \hline
-Method & Fit or training information & Status & Mean S/N & Median S/N [$5\%, 95\%$] \\
+Method & Reference type & Mean S/N & Median S/N [$5\%, 95\%$] \\
 \hline
-Noisy input & none & observed input & $7.8$ & $7.8$ [$3.0$, $14.5$] \\
-Wavelet BayesShrink & validation-tuned noisy-spectrum filter & reference & $27.2$ & $24.9$ [$13.3$, $49.5$] \\
-Noisy-PCA, $k\!=\!16$ & PCA fit on noisy training spectra & noisy-only reference & $54.4$ & $51.4$ [$26.6$, $91.1$] \\
-Clean-template PCA oracle, $k\!=\!16$ & PCA fit on clean templates & non-deployable oracle & $56.0$ & $53.3$ [$27.3$, $93.3$] \\
-\textbf{Blindspot output} & noisy-only blindspot training & \textbf{self-supervised model} & $\mathbf{124}$ & $\mathbf{112}$ [$\mathbf{47}$, $\mathbf{253}$] \\
+Noisy input & observed input & $7.8$ & $7.8$ [$3.0$, $14.5$] \\
+Wavelet BayesShrink & classical filter & $27.2$ & $24.9$ [$13.3$, $49.5$] \\
+PCA, $k\!=\!16$ (noisy-trained) & linear, noisy-only & $54.4$ & $51.4$ [$26.6$, $91.1$] \\
+PCA, $k\!=\!16$ (clean-template) & linear, clean oracle & $56.0$ & $53.3$ [$27.3$, $93.3$] \\
+\textbf{Blindspot output} & \textbf{self-supervised (ours)} & $\mathbf{124}$ & $\mathbf{112}$ [$\mathbf{47}$, $\mathbf{253}$] \\
 \hline
 \end{tabular}
 \end{table}
 
-The blindspot output reaches a factor of about $16$ over the noisy input and more than a factor of two over the strongest noisy-only PCA reference; the clean-template PCA oracle at the same rank lies only marginally above noisy-PCA despite using information unavailable to a noisy-only deployment, so the gain is not bought by access to clean training targets and is not within reach of validation-tuned linear or wavelet baselines.
-
-The clean-template PCA oracle is useful as a scale check but not as a competing deployment pathway: it is fit on noiseless training spectra, whereas the blindspot model is trained only against noisy observations. The comparison in Table~\ref{tab:main_baselines} therefore separates two claims. First, the measured reconstruction gain is not reproduced by simple smoothing or by a low-dimensional linear projection of noisy spectra. Second, the gain is obtained without paired clean training targets. Figure~\ref{fig:appendix_snr_panel} resolves the same aggregate into the joint distribution of input and output S/N over the held-out set: the bulk lies far above the identity line across the full input-S/N range, rather than being driven by a small subset of spectra.
+The classical pixel-domain filter and the linear noisy-only projection both plateau more than a factor of two below the blindspot row, and the clean-template PCA oracle adds essentially nothing on top of noisy-PCA at the same rank. The gain is therefore not produced by access to clean training spectra, nor reachable by what a fixed-rank linear estimator can extract from the noise distribution. The full input--output S/N density (Figure~\ref{fig:appendix_snr_panel}) lies above the identity line across the entire input-S/N decade, so the gain is not concentrated in a small high-S/N subset.
 
 \subsection{The gain is not explained by copying, smoothing, or low-rank projection}
 \label{sec:results_ablation}
