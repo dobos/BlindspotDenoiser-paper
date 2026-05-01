@@ -526,18 +526,19 @@ A spectrum denoiser is not useful if it raises pixel-level S/N by erasing absorp
 
 \begin{table}[htbp]
 \centering
-\small
-\caption{Line-sensitive reconstruction diagnostics on the held-out test split. Equivalent-width entries are per-spectrum medians of the relative error in Equation~\ref{eq:ew_relative_error}. The polarity rows count sign reversals relative to the per-spectrum continuum proxy in Equation~\ref{eq:polarity_flip}. The \mbox{O$_2$} A-band rows are included as a hard-window stress diagnostic, not as the headline result.}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Line-sensitive reconstruction diagnostics on the held-out test split. Equivalent-width entries are per-spectrum medians of the relative error in Equation~\ref{eq:ew_relative_error}; bracketed intervals on the four Ca\,\textsc{ii} rows are $95\%$ paired-bootstrap confidence intervals from $1000$ resamples over the $1000$ held-out spectra, where the same resample indices are applied to the noisy and denoised columns so the $\Delta$ interval captures per-spectrum correlation. The polarity rows count sign reversals relative to the per-spectrum continuum proxy in Equation~\ref{eq:polarity_flip}. The \mbox{O$_2$} A-band rows are included as a hard-window stress diagnostic, not as the headline result; bootstrap intervals are not reported on the polarity and \mbox{O$_2$} auxiliary rows.}
 \label{tab:main_results}
 \begin{tabular}{lccc}
 \hline
  & \textbf{Noisy input $y$} & \textbf{Blindspot output $\hat{x}$} & \textbf{$\Delta=\hat{x}-y$} \\
 \hline
 \multicolumn{4}{l}{\emph{Ca\,\textsc{ii} triplet relative EW error}} \\
-$\quad 8498$~\AA   & $0.653$ & $\mathbf{0.117}$ & $-0.536$ \\
-$\quad 8542$~\AA   & $0.338$ & $\mathbf{0.092}$ & $-0.246$ \\
-$\quad 8662$~\AA   & $1.025$ & $\mathbf{0.143}$ & $-0.882$ \\
-$\quad$Triplet mean & $0.672$ & $\mathbf{0.117}$ & $-0.555$ \\
+$\quad 8498$~\AA   & $0.653$ [$0.570$, $0.736$] & $\mathbf{0.117}$ [$\mathbf{0.106}$, $\mathbf{0.129}$] & $-0.536$ [$-0.621$, $-0.460$] \\
+$\quad 8542$~\AA   & $0.338$ [$0.298$, $0.375$] & $\mathbf{0.092}$ [$\mathbf{0.083}$, $\mathbf{0.103}$] & $-0.246$ [$-0.281$, $-0.208$] \\
+$\quad 8662$~\AA   & $1.025$ [$0.873$, $1.145$] & $\mathbf{0.143}$ [$\mathbf{0.131}$, $\mathbf{0.161}$] & $-0.882$ [$-0.996$, $-0.735$] \\
+$\quad$Triplet mean & $0.672$ [$0.605$, $0.741$] & $\mathbf{0.117}$ [$\mathbf{0.109}$, $\mathbf{0.127}$] & $-0.555$ [$-0.620$, $-0.491$] \\
 \hline
 \multicolumn{4}{l}{\emph{Polarity-flip rate against the per-spectrum continuum median}} \\
 $\quad$All non-continuum pixels                 & $0.271$ & $\mathbf{0.00290}$ & $-0.268$ \\
@@ -590,7 +591,7 @@ Box-car (validation-tuned)              & $1.63$ [$1.56$, $1.70$] & $0.85$ [$0.8
 \end{tabular}
 \end{table}
 
-On the held-out test split, the blindspot-denoised equivalent widths carry the line-preservation result into downstream calibration. The surface-gravity regressor reaches the clean-reference calibrator scatter, and the calcium-triplet metallicity calibrator approaches the same ceiling, while the validation-tuned Savitzky--Golay and box-car baselines remain substantially above the blindspot row on both parameters. The downstream test therefore confirms that the preserved line-strength integrals are not merely visually or diagnostically cleaner: on this simulated support, they provide the measurements needed by simple equivalent-width-based parameter calibrators, and the downstream comparison separates global reconstruction quality from equivalent-width precision so that only the blindspot output approaches the clean-reference downstream scatter. The absolute scatters reported in Table~\ref{tab:integral_pathway} should be read as the information ceiling of these intentionally minimal calibrators at the chosen calibration size, not as a theoretical limit on full-spectrum stellar-label inference; derivative-sensitive template or radial-velocity inference is a different downstream problem and is discussed separately in Section~\ref{sec:discussion}.
+On the held-out test split, the blindspot-denoised equivalent widths carry the line-preservation result into downstream calibration. The surface-gravity regressor reaches the clean-reference calibrator scatter, and the calcium-triplet metallicity calibrator approaches the same ceiling, while the validation-tuned Savitzky--Golay and box-car baselines remain substantially above the blindspot row on both parameters. The ordering is robust to the calibration-set size: across $n_{\mathrm{train}}\!\in\!\{500, 1000, 2000\}$ the blindspot/noisy $\sigma$ ratio remains within $[0.54, 0.63]$ for the surface-gravity calibrator and $[0.63, 0.65]$ for the metallicity calibrator, and the validation-tuned smoothing ratios remain within $[0.83, 0.91]$ on the same sweep. The downstream test therefore confirms that the preserved line-strength integrals are not merely visually or diagnostically cleaner: on this simulated support, they provide the measurements needed by simple equivalent-width-based parameter calibrators, and the downstream comparison separates global reconstruction quality from equivalent-width precision so that only the blindspot output approaches the clean-reference downstream scatter. The absolute scatters reported in Table~\ref{tab:integral_pathway} should be read as the information ceiling of these intentionally minimal calibrators at the chosen calibration size, not as a theoretical limit on full-spectrum stellar-label inference; derivative-sensitive template or radial-velocity inference is a different downstream problem and is discussed separately in Section~\ref{sec:discussion}.
 
 \subsection{Repeated-noise stability and scope}
 \label{sec:results_stability_section}
