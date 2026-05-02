@@ -1,0 +1,20 @@
+# PAPER REPO ALLOWLIST — figs/ 是对外共享文件夹（多教授 + Overleaf sync）
+#
+# 规则：figs/ 下只能存放 paper 实际引用的 final figure。
+# 任何 iteration 文件 (v1/v2/v3/v6/__alt/__min/__optimized/__NEW_*)、scratch、
+# 实验中间产物都禁止 commit 到这里。
+#
+# 实现：先 ignore everything, 然后 whitelist 当前 paper 实际用到的 figs。
+# 加新 figure 时显式写到 whitelist；不加 whitelist 则被 git 忽略。
+
+# Default: ignore everything (incl. dotfiles like .DS_Store, .ipynb_checkpoints)
+*
+
+# Whitelist (tracked figs actually included by paper main.tex / sections)
+!.gitignore
+!appendix/
+!fig1_horizontal_alt.pdf
+!fig1_representative.pdf
+!fig2_noise_ensemble.pdf
+!fig3_caII_zoom_panels.pdf
+!fig4_calibrator_vs_snr.pdf
