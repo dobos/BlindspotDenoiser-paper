@@ -124,7 +124,7 @@ Our contributions are:
     \item A canonical simulated target support consisting of continuum-normalized BOSZ \citep{Bohlin2017} spectra at $R\!\approx\!5000$ in the wavelength range of $7100$--$8850$~\AA and magnitude range of $20.5$--$22.5$. We used stellar parameters typical to late-type stars which are of the primary interest of Galactic Archaeology, and simulated a line spread function and noise characteristics typical to the Subaru Prime Focus Spectrograph (PFS) instrument.
     \item A direct measurement that this support lies in a small-$\gamma$ range, where model-free context predictors leave residual variance far below the per-pixel noise variance.
     \item Held-out comparisons against validation-tuned classical filters, noisy principal-component analysis (PCA), and a non-deployable clean-template PCA reference, with linear reconstruction S/N retained as the primary headline metric.
-    \item Line-preservation diagnostics evaluated alongside aggregate reconstruction error: Ca\,\textsc{ii} triplet equivalent-width (EW) error, continuum-relative polarity-flip rate, and a hard-window \mbox{O$_2$} A-band stress test.
+    \item Line-preservation diagnostics evaluated alongside aggregate reconstruction error: Ca\,\textsc{ii} triplet equivalent-width (EW) error, continuum-relative polarity-flip rate, and an \mbox{O$_2$} A-band test in a high-noise atmospheric window.
 \end{itemize}
 
 \section{Related Work}
@@ -506,7 +506,7 @@ Polarity-flip rate, all non-continuum pixels & $0.271$ & $\mathbf{<0.003}$ \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:main_results} is intentionally compressed: it tests whether the hero gain survives the measurements that would expose continuum-filling behavior. The Ca\,\textsc{ii} rows show that the line-integral error falls to the same scale as the strongest individual-line diagnostic rather than being averaged away. The polarity row is the sharper check against smoothing: after denoising, continuum-relative sign mistakes become rare instead of merely smaller in amplitude. The \mbox{O$_2$} rows add a hard-window stress test; they are not the headline result, but they show that a narrow high-noise atmospheric window is not treated as disposable background under the independent-noise simulator.
+Table~\ref{tab:main_results} is intentionally compressed: it tests whether the headline reconstruction gain survives the measurements that would expose continuum-filling behavior. The Ca\,\textsc{ii} rows show that the line-integral error falls to the same scale as the strongest individual-line diagnostic rather than being averaged away. The polarity row is the sharper check against smoothing: after denoising, continuum-relative sign mistakes become rare instead of merely smaller in amplitude. The \mbox{O$_2$} rows add a stress test in a narrow, high-noise atmospheric window; they are not the headline result, but they show that this window is not treated as disposable background under the independent-noise simulator.
 
 \begin{figure}[htbp]
 \centering
@@ -526,7 +526,7 @@ The downstream question is whether the preserved line integrals remain informati
 \label{fig:calibrator_vs_snr}
 \end{figure*}
 
-Figure~\ref{fig:calibrator_vs_snr} extends the line-preservation result from reconstruction fidelity to physical utility on this support. Across input-S/N bins, the blindspot residual curves track the clean-reference floor more closely than the noisy input or the validation-tuned smoothers, so preserved equivalent widths carry usable parameter information rather than only visual line shape. The bias panels also define the boundary of that extension: an equivalent-width-only calibrator leaves parameter-dependent systematic residuals, so the result validates precision transfer for this fixed integral pathway, not every downstream spectral inference task.
+Figure~\ref{fig:calibrator_vs_snr} extends the line-preservation result from reconstruction fidelity to physical utility on this support. Across input-S/N bins, the blindspot residual curves track the clean-reference floor more closely than the noisy input or the validation-tuned smoothers, so preserved equivalent widths carry usable parameter information rather than only visual line shape. The bias panels also define the boundary of that extension: an equivalent-width-only calibrator leaves parameter-dependent systematic residuals, so the result validates precision transfer for the equivalent-width-based calibrator tested here, not for every downstream spectral inference task.
 
 \subsection{Repeated-noise stability bounds the scope of the claim}
 \label{sec:results_stability_section}
@@ -562,7 +562,7 @@ This study establishes a narrow but useful point: blindspot self-supervision can
 
 The mechanism rests on a controlled assumption: that withholding the central bin makes the context-conditioned target unbiased only when binwise noise is independent and zero-mean. Within the synthetic support of the benchmark, that condition holds, and the network recovers stable spectral structure without learning the identity shortcut. Outside it, correlated subtraction residuals, atmospheric mismatch, or locally ambiguous structure can violate the assumption and bias reconstructions.
 
-Wing-derivative pathways --- template-fit and cross-correlation radial velocities and line-shape-sensitive parameter recovery --- are the natural next benchmarks for this construction; their information lives in the pixel-level wing residuals that the equivalent-width integral does not retain, and a corresponding noisy-only validation under correlated sky and telluric residuals on real-survey spectra remains outside the configuration certified here.
+Radial-velocity estimation by template fit or cross-correlation, and line-shape-sensitive parameter or abundance inference, are the natural next benchmarks: these tasks rely on the per-pixel shape of each absorption line, not only on its integrated equivalent width, and noisy-only validation for them --- including under correlated sky and telluric residuals on real-survey spectra --- remains outside the configuration certified here.
 
 \begin{acknowledgments}
 This work is supported by the generosity of Eric and Wendy Schmidt, by recommendation of the Schmidt Futures program.
@@ -795,7 +795,7 @@ Table~\ref{tab:main_results_full} is the full-precision version of the compact m
 \centering
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\caption{Full line-sensitive reconstruction diagnostics on the held-out test split. Equivalent-width entries are per-spectrum medians of the relative error in Equation~\ref{eq:ew_relative_error}; bracketed intervals on the four Ca\,\textsc{ii} rows are $95\%$ paired-bootstrap confidence intervals from $1000$ resamples over the $1000$ held-out spectra, where the same resample indices are applied to the noisy and denoised columns so the $\Delta$ interval captures per-spectrum correlation. The polarity rows count sign reversals relative to the per-spectrum continuum proxy in Equation~\ref{eq:polarity_flip}. The \mbox{O$_2$} A-band rows are included as a hard-window stress test, not as the headline result; bootstrap intervals are not reported on the polarity and \mbox{O$_2$} auxiliary rows.}
+\caption{Full line-sensitive reconstruction diagnostics on the held-out test split. Equivalent-width entries are per-spectrum medians of the relative error in Equation~\ref{eq:ew_relative_error}; bracketed intervals on the four Ca\,\textsc{ii} rows are $95\%$ paired-bootstrap confidence intervals from $1000$ resamples over the $1000$ held-out spectra, where the same resample indices are applied to the noisy and denoised columns so the $\Delta$ interval captures per-spectrum correlation. The polarity rows count sign reversals relative to the per-spectrum continuum proxy in Equation~\ref{eq:polarity_flip}. The \mbox{O$_2$} A-band rows are included as a stress test in a high-noise atmospheric window, not as the headline result; bootstrap intervals are not reported on the polarity and \mbox{O$_2$} auxiliary rows.}
 \label{tab:main_results_full}
 \begin{tabular}{lccc}
 \hline
