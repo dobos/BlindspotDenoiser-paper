@@ -227,21 +227,42 @@ The forward pass enforces one invariant: the feature used to predict the flux in
 
 \subsection{Theory and Information Bounds}
 \label{sec:theory}
-
-The blindspot architecture answers two questions raised by Section~\ref{sec:problem_formulation}: when does the conditional mean of Equation~\ref{eq:population_target} carry information at all, and when is that information useful?
-
-The first question is structural. If the central wavelength were visible to the predictor, the noisy-target loss in Equation~\ref{eq:self_supervised_loss} would admit the zero-loss copy solution $\hat{x}_{\lambda}=y_{\lambda}$, which contains no information about $x_{\lambda}$; the receptive-field exclusion of Section~\ref{sec:blindspot_algorithm} removes this shortcut by construction.
-
-The second question is quantitative. The conditional mean $\mathbb{E}[x_{\lambda}\mid y_{-\lambda},\bar{\sigma}]$ improves on the noisy observation $y_{\lambda}$ only when the conditional clean-flux ambiguity is small compared with the per-pixel noise. We quantify this recoverability by the context-residual ratio
+\paragraph{Blindspot exclusion prevents the identity shortcut.}
+If the center pixel is visible, the noisy-target objective has a zero-loss copy solution:
+\[
+\hat{x}_{\lambda}=y_{\lambda}
+\quad\Longrightarrow\quad
+\mathcal{L}(\theta;y)
+= \frac{1}{L}\sum_{\lambda=1}^{L}
+    \ell_{\delta}\!\left(y_{\lambda}-y_{\lambda}\right)
+=0.
+\]
+This solution contains no information about $x_{\lambda}$; the blindspot construction removes it by excluding $y_{\lambda}$ from the receptive field.
+Let $\Omega_{\lambda} := (y_{-\lambda},\bar{\sigma})$ denote the blindspot context; identifiability follows from
 \begin{equation}
-    \gamma \;:=\; \tau^{2}/\sigma^{2},
+    y_{\lambda} = x_{\lambda} + \epsilon_{\lambda},
     \qquad
-    \sigma^{2}=\mathrm{Var}(\epsilon_{\lambda}),
-    \qquad
-    \tau^{2}:=\mathrm{Var}(x_{\lambda}\mid y_{-\lambda},\bar{\sigma}).
+    \mathbb{E}\!\left[\epsilon_{\lambda} \mid x_{\lambda},\Omega_{\lambda}\right] = 0,
+    \label{eq:consistency_setup}
+\end{equation}
+which gives
+\begin{equation}
+    \mathbb{E}\!\left[y_{\lambda}\mid \Omega_{\lambda}\right]
+    \;=\;
+    \mathbb{E}\!\left[x_{\lambda}\mid \Omega_{\lambda}\right].
+    \label{eq:consistency}
+\end{equation}
+The unpredictable noise washes out under the conditional expectation, leaving the context-conditioned clean signal as the optimal regression target.
+
+\paragraph{Recoverability is measured by the context-residual ratio $\gamma$.}
+With $\sigma^{2}=\mathrm{Var}(\epsilon_{\lambda})$ and $\tau^{2}:=\mathrm{Var}(x_{\lambda}\mid\Omega_{\lambda})$, define
+\begin{equation}
+    \gamma \;:=\; \tau^{2}/\sigma^{2}.
     \label{eq:gamma}
 \end{equation}
-Small $\gamma$ means the context predicts the clean flux more accurately than the noisy center observation itself, and blindspot denoising can improve on $y_{\lambda}$; the local Gaussian risk calculation is given in Appendix~\ref{app:gamma_risk_interpretation}. The reason to expect small $\gamma$ on stellar spectra is the ratio between the spectral correlation length and the per-bin noise scale, set jointly by stellar physics and by the instrument: intrinsic line widths and line density vary across dwarfs and giants, while the simulated line-spread function spreads unresolved features over several wavelength samples. Neighboring bins predict a withheld bin only when astrophysical and instrumental line widths are sampled by enough pixels; we verify the small-$\gamma$ range directly on held-out clean BOSZ spectra in Appendix~\ref{app:controls_gamma}.
+Small $\gamma$ means the context predicts the clean flux more accurately than the noisy center observation itself, so the hidden wavelength is recoverable in the sense needed for blindspot denoising; the local Gaussian risk calculation behind this interpretation is given in Appendix~\ref{app:gamma_risk_interpretation}.
+\paragraph{The target support has a physically set correlation scale.}
+The reason to expect small $\gamma$ is not generic smoothness, but the ratio between the spectral correlation length and the per-bin noise scale. That correlation length is set jointly by stellar physics and by the instrument: intrinsic line widths and line density vary across dwarfs and giants, while the simulated line-spread function spreads unresolved features over several wavelength samples. Neighboring bins can therefore predict a withheld bin only when the astrophysical and instrumental line widths are sampled by enough pixels. We verify this S/N range directly on held-out clean BOSZ spectra: simple local predictors leave residual variance below about $10^{-3}$ of the injected per-pixel noise variance in the conservative $95$th-percentile summary, with the full per-estimator measurement table given in Appendix~\ref{app:controls_gamma}. Spectra with sharper lines, different gravity distributions, or a different line-spread function should be checked separately rather than assumed to share the same small-$\gamma$ range; we therefore use the small-$\gamma$ argument as a range statement for this simulated data set, not as an unconditional guarantee beyond it.
 
 \section{Implementation}
 \label{sec:implementation}
