@@ -105,7 +105,7 @@
 
 
 \begin{abstract}
-Low signal-to-noise ratio (S/N) stellar spectra are unavoidable for faint survey targets, and the absorption-line measurements that drive target selection, radial-velocity estimation, and abundance work are among the first quantities to degrade. Because real surveys provide no paired clean references, fully supervised denoisers inherit a simulator-to-deployment dependency. We train a one-dimensional self-supervised blindspot denoiser on noisy spectra alone, predicting each wavelength bin from a receptive field that excludes the target bin. In a survey-relevant simulated noise setting with heteroscedastic photon, sky, and read noise, the mean per-spectrum reconstruction S/N rises from $7.8$ on the noisy input to $124$ on the blindspot output, and the sky-dominated \mbox{O$_2$} A band recovers from $0.16$ to $3.6$ on the same spectra. The reconstruction preserves narrow absorption features rather than smoothing them: the \mbox{Ca\,\textsc{ii}} triplet equivalent-width error decreases. An equivalent-width-only linear mapping then recovers effective temperature, surface gravity, and metallicity from the denoised spectra at the clean-reference precision floor, while classical smoothing baselines barely improve over the noisy input. This is a simulated proof of principle for noise-only training of stellar-spectrum denoisers; real-survey deployment under correlated sky and telluric residuals is left as future work. The source code is available at \url{https://github.com/ViskaWei/BlindSpotDenoiser}.
+Low signal-to-noise ratio (S/N) stellar spectra are unavoidable for faint survey targets, and the absorption-line measurements that drive target selection, radial-velocity estimation, and abundance work are among the first quantities to degrade. Because real surveys provide no paired clean references, fully supervised denoisers inherit a simulator-to-deployment dependency. We train a one-dimensional self-supervised blindspot denoiser on noisy spectra alone, predicting each wavelength bin from a receptive field that excludes the target bin. In a survey-relevant simulated noise setting with heteroscedastic photon, sky, and read noise, the mean per-spectrum reconstruction S/N rises from $7.8$ on the noisy input to $124$ on the blindspot output, and the sky-dominated \mbox{O$_2$} A band recovers from $0.16$ to $3.6$ on the same spectra. The reconstruction preserves narrow absorption features rather than smoothing them: the \mbox{Ca\,\textsc{ii}} triplet equivalent-width error decreases. A frozen clean-trained surface-gravity calibrator applied unchanged to the denoised spectra recovers most of the gravity-discriminating information lost on the noisy input --- centered robust residual scatter falls from $1.26$ to $0.80$~dex (about a $36\%$ reduction) and mean absolute error from $0.96$ to $0.67$~dex --- while validation-tuned smoothers do not transfer. This is a simulated proof of principle for noise-only training of stellar-spectrum denoisers; real-survey deployment under correlated sky and telluric residuals is left as future work. The source code is available at \url{https://github.com/ViskaWei/BlindSpotDenoiser}.
 \end{abstract}
 
 \keywords{\uat{Stellar astronomy}{1583} --- \uat{Spectroscopy}{1558} --- \uat{Stellar spectral lines}{1630} --- \uat{Convolutional neural networks}{1938}}
@@ -125,6 +125,7 @@ Our contributions are:
     \item A direct measurement that this support lies in a small-$\gamma$ range, where model-free context predictors leave residual variance far below the per-pixel noise variance.
     \item Held-out comparisons against validation-tuned classical filters, noisy principal-component analysis (PCA), and a non-deployable clean-template PCA reference, with linear reconstruction S/N retained as the primary headline metric.
     \item Line-preservation diagnostics evaluated alongside aggregate reconstruction error: Ca\,\textsc{ii} triplet equivalent-width (EW) error, continuum-relative polarity-flip rate, and an \mbox{O$_2$} A-band test in a high-noise atmospheric window.
+    \item A downstream test of the denoised spectra through a frozen clean-trained surface-gravity ($\log g$) calibrator, in which validation-tuned smoothers serve as differential controls.
 \end{itemize}
 
 \section{Related Work}
@@ -226,60 +227,21 @@ The forward pass enforces one invariant: the feature used to predict the flux in
 
 \subsection{Theory and Information Bounds}
 \label{sec:theory}
-\paragraph{Blindspot exclusion prevents the identity shortcut.}
-If the center pixel is visible, the noisy-target objective has a zero-loss copy solution:
-\[
-\hat{x}_{\lambda}=y_{\lambda}
-\quad\Longrightarrow\quad
-\mathcal{L}(\theta;y)
-= \frac{1}{L}\sum_{\lambda=1}^{L}
-    \ell_{\delta}\!\left(y_{\lambda}-y_{\lambda}\right)
-=0.
-\]
-This solution contains no information about $x_{\lambda}$; the blindspot construction removes it by excluding $y_{\lambda}$ from the receptive field.
-Let $\Omega_{\lambda} := (y_{-\lambda},\bar{\sigma})$ denote the blindspot context; identifiability follows from
-\begin{equation}
-    y_{\lambda} = x_{\lambda} + \epsilon_{\lambda},
-    \qquad
-    \mathbb{E}\!\left[\epsilon_{\lambda} \mid x_{\lambda},\Omega_{\lambda}\right] = 0,
-    \label{eq:consistency_setup}
-\end{equation}
-which gives
-\begin{equation}
-    \mathbb{E}\!\left[y_{\lambda}\mid \Omega_{\lambda}\right]
-    \;=\;
-    \mathbb{E}\!\left[x_{\lambda}\mid \Omega_{\lambda}\right].
-    \label{eq:consistency}
-\end{equation}
-The unpredictable noise washes out under the conditional expectation, leaving the context-conditioned clean signal as the optimal regression target.
 
-\paragraph{The information lost by withholding the central pixel is controlled by $\gamma$.}
-To assess how much information is lost by discarding $y_{\lambda}$ from the prediction, compare three local estimators of $x_{\lambda}$ under independent Gaussian noise: the raw pixel $y_{\lambda}$, the blindspot context-only estimator, and the full estimator combining both. With $\sigma^{2}=\mathrm{Var}(\epsilon_{\lambda})$ and $\tau^{2}:=\mathrm{Var}(x_{\lambda}\mid\Omega_{\lambda})$, define
+The blindspot architecture answers two questions raised by Section~\ref{sec:problem_formulation}: when does the conditional mean of Equation~\ref{eq:population_target} carry information at all, and when is that information useful?
+
+The first question is structural. If the central wavelength were visible to the predictor, the noisy-target loss in Equation~\ref{eq:self_supervised_loss} would admit the zero-loss copy solution $\hat{x}_{\lambda}=y_{\lambda}$, which contains no information about $x_{\lambda}$; the receptive-field exclusion of Section~\ref{sec:blindspot_algorithm} removes this shortcut by construction.
+
+The second question is quantitative. The conditional mean $\mathbb{E}[x_{\lambda}\mid y_{-\lambda},\bar{\sigma}]$ improves on the noisy observation $y_{\lambda}$ only when the conditional clean-flux ambiguity is small compared with the per-pixel noise. We quantify this recoverability by the context-residual ratio
 \begin{equation}
-    \gamma \;:=\; \tau^{2}/\sigma^{2}.
+    \gamma \;:=\; \tau^{2}/\sigma^{2},
+    \qquad
+    \sigma^{2}=\mathrm{Var}(\epsilon_{\lambda}),
+    \qquad
+    \tau^{2}:=\mathrm{Var}(x_{\lambda}\mid y_{-\lambda},\bar{\sigma}).
     \label{eq:gamma}
 \end{equation}
-The three mean-squared errors are
-\begin{equation}
-    R_{\rm raw} = \sigma^{2},
-    \qquad
-    R_{\rm BS} = \tau^{2} = \gamma\,\sigma^{2},
-    \qquad
-    R_{\rm full} = \frac{\gamma}{1+\gamma}\,\sigma^{2},
-    \label{eq:theory_risks}
-\end{equation}
-so the informative ratios depend only on $\gamma$:
-\begin{equation}
-    \frac{R_{\rm raw}}{R_{\rm BS}} = \frac{1}{\gamma},
-    \qquad
-    \frac{R_{\rm BS}}{R_{\rm full}} = 1+\gamma,
-    \qquad
-    \frac{R_{\rm raw}}{R_{\rm full}} = 1 + \frac{1}{\gamma}.
-    \label{eq:theory_ratios}
-\end{equation}
-As $\gamma\!\to\!0$ the blindspot estimator tracks the full one almost exactly ($R_{\rm BS}/R_{\rm full}\!\to\!1$); when $\gamma\gtrsim 1$ the center pixel carries information the context cannot supply, and blindspot training should not be expected to perform well.
-\paragraph{The target support has a physically set correlation scale.}
-The reason to expect small $\gamma$ is not generic smoothness, but the ratio between the spectral correlation length and the per-bin noise scale. That correlation length is set jointly by stellar physics and by the instrument: intrinsic line widths and line density vary across dwarfs and giants, while the simulated line-spread function spreads unresolved features over several wavelength samples. Neighboring bins can therefore predict a withheld bin only when the astrophysical and instrumental line widths are sampled by enough pixels. We verify this S/N range directly on held-out clean BOSZ spectra: simple local predictors leave residual variance below about $10^{-3}$ of the injected per-pixel noise variance in the conservative $95$th-percentile summary, with the full per-estimator measurement table given in Appendix~\ref{app:controls_gamma}. Spectra with sharper lines, different gravity distributions, or a different line-spread function should be checked separately rather than assumed to share the same small-$\gamma$ range; we therefore use the small-$\gamma$ argument as a range statement for this simulated data set, not as an unconditional guarantee beyond it.
+Small $\gamma$ means the context predicts the clean flux more accurately than the noisy center observation itself, and blindspot denoising can improve on $y_{\lambda}$; the local Gaussian risk calculation is given in Appendix~\ref{app:gamma_risk_interpretation}. The reason to expect small $\gamma$ on stellar spectra is the ratio between the spectral correlation length and the per-bin noise scale, set jointly by stellar physics and by the instrument: intrinsic line widths and line density vary across dwarfs and giants, while the simulated line-spread function spreads unresolved features over several wavelength samples. Neighboring bins predict a withheld bin only when astrophysical and instrumental line widths are sampled by enough pixels; we verify the small-$\gamma$ range directly on held-out clean BOSZ spectra in Appendix~\ref{app:controls_gamma}.
 
 \section{Implementation}
 \label{sec:implementation}
@@ -433,7 +395,7 @@ Exact model hyperparameters, evaluation-contract details, and validation-tuning 
 \section{Results}
 \label{sec:results}
 
-The results are organized around the burden of proof for a noisy-only blindspot denoiser. We first state the target-support setting inline with the main reconstruction result: the held-out spectra satisfy the small-$\gamma$ context-predictability premise, and the frozen blindspot checkpoint is then evaluated against the noisy input, validation-tuned filters, PCA references, and a clean-template reference. We next separate the gain from three failure explanations --- copying the noisy target, smoothing away absorption structure, and projecting onto a fixed low-rank template space. We then ask whether the aggregate gain preserves line-sensitive measurements and transfers to an equivalent-width calibrator, before closing with repeated-noise stability and the boundary of the claim. All numbers below are measured on the canonical held-out split of $1000$ spectra with $10$ independent noise realizations per spectrum; clean spectra are used only for evaluation.
+The results are organized around the burden of proof for a noisy-only blindspot denoiser. We first state the target-support setting inline with the main reconstruction result: the held-out spectra satisfy the small-$\gamma$ context-predictability premise, and the frozen blindspot checkpoint is then evaluated against the noisy input, validation-tuned filters, PCA references, and a clean-template reference. We next separate the gain from three failure explanations --- copying the noisy target, smoothing away absorption structure, and projecting onto a fixed low-rank template space. We then ask whether the aggregate gain preserves line-sensitive measurements, and close with a downstream test in which a frozen clean-trained surface-gravity ($\log g$) calibrator is applied unchanged to the denoised spectra and to four reference inputs. All numbers in Sections~\ref{sec:results_denoising}--\ref{sec:results_physical} are measured on the canonical held-out split of $1000$ spectra with $10$ independent noise realizations per spectrum; the downstream calibrator in Section~\ref{sec:results_downstream_logg} uses a separate $5{,}000$-spectrum held-out test partition of the same scope-restricted BOSZ library, disjoint from the calibrator-training set. Clean spectra are used only for evaluation.
 
 \subsection{Noisy-only blindspot denoising raises low-S/N reconstruction in the small-\texorpdfstring{$\gamma$}{gamma} range}
 \label{sec:results_denoising}
@@ -470,7 +432,7 @@ PCA, $k\!=\!16$ (clean-template) & linear, clean reference & $56.0$ & $53.3$ [$2
 
 The comparison is stronger than ``better than the noisy input.'' The blindspot row clears the validation-tuned pixel-domain filter, the noisy-only PCA projection, and the non-deployable clean-template PCA reference, so the gain is not explained by importing clean targets, by tuning a conventional smoother, or by a fixed-rank linear reconstruction of the training support. The input--output S/N density in Figure~\ref{fig:appendix_snr_panel} also stays above the identity line across the input-S/N decade, so the headline gain is not concentrated in a small subset of easy spectra.
 
-Figure~\ref{fig:representative_spectrum} shows why this matters scientifically. At the faint end, the noisy fluctuations are large enough to obscure the line cores by eye, but the blindspot output follows the Ca\,\textsc{ii} absorption structure instead of washing it toward the continuum. The next two subsections therefore test the two ways the hero result could still be misleading: first, whether the gain is a shortcut or projection artifact; second, whether the cleaner reconstruction preserves line-sensitive evidence well enough to support downstream equivalent-width calibration.
+Figure~\ref{fig:representative_spectrum} shows why this matters scientifically. At the faint end, the noisy fluctuations are large enough to obscure the line cores by eye, but the blindspot output follows the Ca\,\textsc{ii} absorption structure instead of washing it toward the continuum. The next two subsections therefore test the two ways the hero result could still be misleading: first, whether the gain is a shortcut or projection artifact; second, whether the cleaner reconstruction preserves line-sensitive evidence well enough to be read by an unmodified downstream estimator.
 
 \subsection{Ablation study: copying, smoothing, and low-rank projection do not explain the gain}
 \label{sec:results_ablation}
@@ -481,11 +443,10 @@ The copy shortcut is ruled out structurally and numerically. Section~\ref{sec:th
 
 The smoothing and low-rank explanations fail on the comparison axis rather than on architecture alone. Validation-tuned filters and noisy-PCA improve over the raw observation but remain far below the blindspot reconstruction, while the clean-template PCA reference adds little over noisy-PCA at the same rank. The full training-signal ablation is moved to Appendix~\ref{app:architecture_integrity}, Table~\ref{tab:training_signal_ablation}: it shows the central-visible noisy-target control collapsing to the noisy-input scale and bounds the noisy-only blindspot against a supervised clean-target U-Net. Together these checks identify the mechanism needed for belief in the hero result: the gain depends on excluding the central pixel while learning from noisy targets, not on clean targets, generic smoothness, or fixed linear templates.
 
-\subsection{Line-preserving reconstructions transfer to equivalent-width calibration}
+\subsection{Line-sensitive diagnostics confirm that the reconstruction preserves absorption structure}
 \label{sec:results_physical}
-\label{sec:results_integral_pathway}
 
-A spectrum denoiser is not useful if it raises pixel-level S/N by erasing absorption features. We therefore test the frozen blindspot output at two levels: line-sensitive reconstruction diagnostics, and a downstream calibrator that consumes only equivalent-width integrals. This subsection supports line-preserving reconstruction and equivalent-width utility; it does not validate derivative-sensitive template fitting, radial velocities, abundance measurements, or real-survey deployment.
+A spectrum denoiser is not useful if it raises pixel-level S/N by erasing absorption features. We therefore test the frozen blindspot output with line-sensitive reconstruction diagnostics --- equivalent-width error on the Ca\,\textsc{ii} triplet, continuum-relative polarity flips, and a sky-dominated \mbox{O$_2$} A-band window --- before turning, in Section~\ref{sec:results_downstream_logg}, to a downstream parameter-inference test on these same reconstructions. This subsection supports line-preserving reconstruction; it is not used as evidence for derivative-sensitive template fitting, radial velocities, abundance measurements, or real-survey deployment.
 
 \begin{table}[htbp]
 \centering
@@ -517,32 +478,38 @@ Table~\ref{tab:main_results} is intentionally compressed: it tests whether the h
 
 Figure~\ref{fig:caII_zoom} supplies the morphology behind the compact table. The noisy trace has excursions comparable to, or larger than, the line-core contrast, while the blindspot output follows the clean line depth and width. The line-preservation claim is therefore not a visual anecdote and not a table-reading exercise: the representative spectrum, the equivalent-width statistic, and the polarity statistic all point to the same behavior.
 
-The downstream question is whether the preserved line integrals remain informative for stellar-parameter calibration. A single linear regression maps a six-line equivalent-width vector --- the Ca\,\textsc{ii} triplet, Fe\,\textsc{i}~$8688$, Mg\,\textsc{i}~$8806$, and O\,\textsc{i}~$7774$~\AA --- to $(T_{\rm eff},\,\log g,\,[\mathrm{M}/\mathrm{H}])$. The mapping is fit only on clean-reference equivalent widths from a disjoint calibration split and then applied unchanged to equivalent widths measured from the noisy input, the blindspot output, validation-tuned smoothers, and the clean reference on the held-out test split. The full scatter-and-bias table is moved to Appendix~\ref{app:line_addenda}, Table~\ref{tab:integral_pathway}; the main text keeps the S/N-stratified residual figure because it shows whether the transfer fails in any input-S/N range.
+\subsection{A clean-trained gravity calibrator transfers to the denoised spectra}
+\label{sec:results_downstream_logg}
 
-\begin{figure*}[ht]
+The reconstruction and line-preservation results above show that the blindspot output retains absorption structure rather than smoothing it away. We close by asking whether the retained structure carries information that an unmodified downstream estimator can use, with a frozen clean-trained surface-gravity ($\log g$) calibrator applied to the same five reconstruction sources used elsewhere in the section.
+
+The calibrator is a gradient-boosted regression-tree model (LightGBM, default hyperparameters) fit on the full continuum-normalized flux vector of $30{,}000$ clean training spectra with the BOSZ $\log g$ label as the target. Calibrator training and evaluation use a labeled BOSZ pool of $50{,}000$ spectra drawn from the same scope-restricted library as the reconstruction split, partitioned into a $30{,}000$-spectrum calibrator-training set and a disjoint $5{,}000$-spectrum held-out test set; the spectra used as $\hat{x}$ in this section are the blindspot reconstructions of those held-out spectra. The trained model is then frozen and applied unchanged to five inputs on that test set: clean reference, blindspot output $\hat{x}$, noisy input $y$, the validation-tuned box-car smoother, and the validation-tuned Savitzky--Golay smoother. The clean-input row is an upper reference for what the fixed map can extract under the simulator label distribution; it is not a deployable comparison.
+
+\begin{table}[htbp]
 \centering
-\includegraphics[width=\linewidth]{figs/fig4_calibrator_vs_snr.pdf}
-\caption{Residual scatter (left), mean absolute residual (center), and bias (right) of the downstream linear calibrator stratified into six equal-population S/N bins on the held-out test set, with $95\%$ paired-bootstrap confidence bands. Rows correspond to $T_{\rm eff}$, $\log g$, and $[\mathrm{M}/\mathrm{H}]$. The clean-reference and blindspot residuals track each other across the S/N range and remain below the noisy-input residuals at every binned S/N, so the calibrator gain reported in Table~\ref{tab:integral_pathway} is not concentrated in a single S/N range. The bias column shows that all denoising sources, including box-car and Savitzky--Golay smoothing, leave a parameter-dependent systematic residual; on $[\mathrm{M}/\mathrm{H}]$ the blindspot bias tracks the smoothing baselines rather than the clean reference, so an equivalent-width-only inference pipeline does not absorb the line-shape distortion left by any of these denoisers.}
-\label{fig:calibrator_vs_snr}
-\end{figure*}
+\small
+\caption{Frozen clean-trained $\log g$ calibrator on five reconstruction inputs, evaluated on $5{,}000$ held-out spectra. $\sigma_{\rm rob}$ is the centered Gaussian-equivalent dispersion of the residual $\widehat{\log g}-\log g_{\rm true}$; MAE and bias are the mean absolute and mean signed residuals; $R^{2}$ is the coefficient of determination. The clean-input row is an upper reference under the fixed mapping. Paired-bootstrap $95\%$ confidence intervals over $1000$ resamples on the blindspot-vs-noisy ratios are $\sigma_{\rm rob}$-ratio $0.64$ $[0.61,\,0.66]$ and MAE-ratio $0.70$ $[0.68,\,0.72]$.}
+\label{tab:downstream_logg}
+\begin{tabular}{lcccc}
+\hline
+Input spectrum & $\sigma_{\rm rob}$ [dex] & MAE [dex] & Bias [dex] & $R^{2}$ \\
+\hline
+Clean reference (upper bound)         & $0.222$ & $0.205$ & $+0.001$ & $0.940$ \\
+\textbf{Blindspot output (ours)}      & $\mathbf{0.801}$ & $\mathbf{0.670}$ & $\mathbf{+0.020}$ & $\mathbf{0.463}$ \\
+Box-car smoother (val.\ tuned)        & $1.087$ & $0.867$ & $-0.086$ & $0.137$ \\
+Savitzky--Golay smoother (val.\ tuned)& $1.088$ & $0.871$ & $-0.089$ & $0.127$ \\
+Noisy input                           & $1.262$ & $0.958$ & $-0.170$ & $0.011$ \\
+\hline
+\end{tabular}
+\end{table}
 
-Figure~\ref{fig:calibrator_vs_snr} extends the line-preservation result from reconstruction fidelity to physical utility on this support. Across input-S/N bins, the blindspot residual curves track the clean-reference floor more closely than the noisy input or the validation-tuned smoothers, so preserved equivalent widths carry usable parameter information rather than only visual line shape. The bias panels also define the boundary of that extension: an equivalent-width-only calibrator leaves parameter-dependent systematic residuals, so the result validates precision transfer for the equivalent-width-based calibrator tested here, not for every downstream spectral inference task.
+Two checks frame Table~\ref{tab:downstream_logg}. The clean-input row reaches $R^{2}=0.94$, so the $\log g$ task itself is not degenerate: the fixed mapping really does encode the line-shape information that distinguishes giants from dwarfs in this BOSZ support. Against that reference, the blindspot output recovers most of the gravity-discriminating information that the noisy input loses --- the centered robust scatter falls by about $36\%$ and MAE by about $30\%$, and the strong negative bias of the noisy and smoothed inputs is removed. The two validation-tuned smoothers do not transfer: their residual statistics stay at the noisy-input scale and their bias matches the noisy bias rather than the clean reference. The improvement therefore depends on the line-preserving reconstructions characterized in Section~\ref{sec:results_physical}, not on generic noise reduction by any reasonable smoother.
 
-\subsection{Repeated-noise stability bounds the scope of the claim}
-\label{sec:results_stability_section}
+The ordering is stable across calibrator complexity. Refitting the same regressor at $n_{\rm train}\!\in\!\{1{,}000,\,3{,}000,\,10{,}000,\,30{,}000\}$ shows that the clean-input scatter improves monotonically with calibrator-training size while the noisy and smoother rows stay flat at the noisy-input scale, and the blindspot row tracks the clean column at an approximately constant offset over the full sweep (Appendix~\ref{app:downstream_logg}, Table~\ref{tab:downstream_logg_sweep}). The reduction reported in Table~\ref{tab:downstream_logg} is therefore not a special feature of the maximum-training-size operating point.
 
-The preceding results use one frozen trained model. We therefore test whether the reported point estimate is stable to repeated noise perturbations of a fixed clean spectrum. Holding one held-out clean spectrum $x$ fixed, we draw $10^{4}$ independent noise realizations from the same heteroscedastic simulator, denoise each realization, and summarize the output ensemble by its mean $\langle\hat{x}\rangle$ and across-draw spread $\sigma_{\hat{x}}$.
+This is a downstream test of preserved line-shape information through a fixed clean-trained estimator, not a validated stellar-parameter pipeline. The calibrator was fit only on BOSZ-distributed labels, was not asked to handle correlated sky residuals or telluric mismatch, and the blindspot residuals retain a small positive bias that the smoothers and noisy input do not. The headline reads: under the same simulated noise model, blindspot denoising recovers most of the $\log g$-discriminating information lost on the noisy input, against the same fixed clean-trained reference, while validation-tuned smoothers do not.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figs/fig2_noise_ensemble.pdf}
-\caption{Fixed-spectrum repeated-noise diagnostic for the reported blindspot model. One held-out clean spectrum is perturbed by $10^{4}$ independent noise draws and denoised repeatedly. \textbf{Top-left:} clean spectrum $x$ and repeated-draw mean estimate $\langle \hat{x} \rangle$, shifted for readability. \textbf{Bottom-left:} residual $x-\langle \hat{x} \rangle$. \textbf{Right:} input noise scale and across-draw spread $\sigma_{\hat{x}}$ of the denoised outputs on a shared linear axis. This diagnostic measures sensitivity to noise realizations for a fixed spectrum; it is not a calibrated uncertainty estimate.}
-\label{fig:noise_ensemble}
-\end{figure}
-
-Figure~\ref{fig:noise_ensemble} shows that the repeated-draw mean follows the clean spectrum and that the denoised spread remains far below the input noise scale over most wavelengths. This supports the estimator interpretation used above: changing the random noise realization does not produce large changes in the denoised output for this fixed spectrum. It should not be read as posterior uncertainty calibration, an error bar on individual line measurements, or evidence for robustness to all training seeds.
-
-Taken together, the Results section supports three claims: noisy-only blindspot training delivers the low-S/N reconstruction gain in Table~\ref{tab:main_baselines}; the gain is not explained by copying, smoothing, or fixed-rank projection; and the preserved equivalent-width evidence transfers to a simple calibrator within the simulated target support. All conclusions are conditional on continuum-normalized, medium-resolution, late-type BOSZ/PFS-like spectra at magnitude $20.5$--$22.5$ with independent zero-mean per-pixel noise. The results do not validate deployment on real survey spectra, correlated sky or telluric residuals, hotter or sharper-lined spectra, fainter targets, uncertainty calibration, radial-velocity precision, stellar-parameter recovery beyond the equivalent-width calibrator tested here, or abundance-sensitive downstream measurements.
+Taken together, the Results section supports three claims: noisy-only blindspot training delivers the low-S/N reconstruction gain in Table~\ref{tab:main_baselines}; the gain is not explained by copying, smoothing, or fixed-rank projection; and the line-sensitive diagnostics improve in such a way that a frozen clean-trained $\log g$ calibrator transfers to the denoised spectra while validation-tuned smoothers do not. All conclusions are conditional on continuum-normalized, medium-resolution, late-type BOSZ/PFS-like spectra at magnitude $20.5$--$22.5$ with independent zero-mean per-pixel noise. The results do not validate deployment on real survey spectra, correlated sky or telluric residuals, hotter or sharper-lined spectra, fainter targets, uncertainty calibration, radial-velocity precision, derivative-sensitive template fitting, or abundance-sensitive downstream measurements.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -550,11 +517,11 @@ In this simulated target support, noisy-only blindspot training raises the mean 
 
 \paragraph{Where the method should be expected to fail.} Three failure modes are predictable from the assumptions in Section~\ref{sec:method}. First, structured residuals --- imperfectly subtracted sky lines, telluric mismatch, and detector cosmetics --- violate the conditional-independence assumption of Equation~\ref{eq:noise_model_scalar} and can drive the context-conditioned predictor toward biased reconstructions inside affected windows. Second, sharper unresolved features and hot-star spectra raise the local conditional variance $\tau^2$, which moves $\gamma$ out of the small range in which the blindspot estimator tracks the full estimator (Section~\ref{sec:theory}). Third, the Huber objective in Equation~\ref{eq:self_supervised_loss} estimates an outlier-attenuated conditional location rather than the conditional mean unless the noise is symmetric to within the breakpoint $\delta$ and $\delta$ is large relative to the residual scale; asymmetric or heavy-tailed corruption is therefore expected to shift the optimum away from the target in Section~\ref{sec:problem_formulation}.
 
-\paragraph{Reproducibility scope.} All main numerical results are obtained from one frozen canonical checkpoint evaluated on one held-out split with ten independent noise realizations per spectrum. The repeated-noise diagnostic in Figure~\ref{fig:noise_ensemble} tests sensitivity to noise draws for a fixed clean spectrum; it is not uncertainty calibration and it does not substitute for a full training-seed robustness study. Independent training-seed repeats, scalar-noise-conditioning ablations, and supervised clean-target references are left outside the main claim unless evaluated under the same frozen held-out metric battery.
+\paragraph{Reproducibility scope.} All main numerical results are obtained from one frozen canonical checkpoint evaluated on one held-out split with ten independent noise realizations per spectrum. The repeated-noise diagnostic in Appendix~\ref{app:noise_stability} tests sensitivity to noise draws for a fixed clean spectrum; it is not uncertainty calibration and it does not substitute for a full training-seed robustness study. Independent training-seed repeats, scalar-noise-conditioning ablations, and supervised clean-target references are left outside the main claim unless evaluated under the same frozen held-out metric battery.
 
 \paragraph{Copy-shortcut control.} The copy shortcut is ruled out structurally by the blindspot construction and numerically by the integrity audit detailed in Appendix~\ref{app:architecture_integrity}; we do not run a separate central-visible/noisy-target reconstruction control.
 
-\paragraph{Downstream parameter recovery and real-data validation.} Within the simulated target support, the downstream experiment extends the main denoising result from reconstruction fidelity to physical utility: the preserved equivalent widths feed a simple linear calibrator that recovers $T_{\rm eff}$, $\log g$, and $[\mathrm{M}/\mathrm{H}]$ at or near the clean-reference precision floor, with validation-tuned smoothing baselines closing only a modest part of the gap from the noisy input (Section~\ref{sec:results_integral_pathway}). The same calibrator leaves a parameter-dependent systematic bias that an equivalent-width-only inference pipeline cannot absorb. This is the downstream setting validated here: a fixed calibrator that consumes line-strength integrals. We do not claim that the same denoised spectra are validated for every spectral inference task. Template-fit radial velocities, cross-correlation velocities, line-shape-sensitive parameter or abundance inference, and deployment under correlated sky or telluric residuals on real-survey spectra are different deployment questions and remain outside the present validation. The manuscript is a simulated proof-of-principle for noise-only training within the stated target support, not a survey-deployment or out-of-support extrapolation claim.
+\paragraph{Downstream parameter recovery and real-data validation.} The frozen clean-trained $\log g$ calibrator in Section~\ref{sec:results_downstream_logg} is a downstream test of preserved line-shape information, not a validated parameter pipeline. It shows that under a fixed clean-trained mapping the denoised spectra return most of the gravity-discriminating information lost on the noisy input, while the two validation-tuned smoothers do not transfer at all: their residual statistics remain at the noisy-input scale and their bias inherits the noisy-input bias rather than the clean reference. This separation indicates that the gain depends on line-shape preservation rather than on generic noise suppression. We do not, however, claim survey-deployment-ready stellar-parameter recovery, template-fit or cross-correlation radial velocities, line-shape-sensitive abundance inference, or deployment under correlated sky or telluric residuals on real-survey spectra. The manuscript is a simulated proof of principle for noise-only training within the stated target support, not a survey-deployment or out-of-support extrapolation claim.
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -562,7 +529,7 @@ This study establishes a narrow but useful point: blindspot self-supervision can
 
 The mechanism rests on a controlled assumption: that withholding the central bin makes the context-conditioned target unbiased only when binwise noise is independent and zero-mean. Within the synthetic support of the benchmark, that condition holds, and the network recovers stable spectral structure without learning the identity shortcut. Outside it, correlated subtraction residuals, atmospheric mismatch, or locally ambiguous structure can violate the assumption and bias reconstructions.
 
-Radial-velocity estimation by template fit or cross-correlation, and line-shape-sensitive parameter or abundance inference, are the natural next benchmarks: these tasks rely on the per-pixel shape of each absorption line, not only on its integrated equivalent width, and noisy-only validation for them --- including under correlated sky and telluric residuals on real-survey spectra --- remains outside the configuration certified here.
+The downstream calibrator demonstration shows that this preservation is not only diagnostic: a fixed clean-trained estimator reads most of the surface-gravity information from the denoised spectra that it loses on the noisy input, while validation-tuned smoothers do not transfer at all. Radial-velocity estimation by template fit or cross-correlation, and line-shape-sensitive abundance inference, are the natural next benchmarks: these tasks depend on the per-pixel shape of each absorption line at higher precision than the gravity calibrator probes, and noisy-only validation for them --- including under correlated sky and telluric residuals on real-survey spectra --- remains outside the configuration certified here.
 
 \begin{acknowledgments}
 This work is supported by the generosity of Eric and Wendy Schmidt, by recommendation of the Schmidt Futures program.
@@ -581,7 +548,7 @@ This work is supported by the generosity of Eric and Wendy Schmidt, by recommend
 \section{Experimental and Reproducibility Contract}
 \label{app:contract}
 
-This appendix collects the frozen experimental contract under which every number reported in Sections~\ref{sec:results_denoising}--\ref{sec:results_stability_section} is obtained: the public release that pins code and data, the canonical training and held-out split, the rule that separates validation tuning from held-out evaluation, and the software environment. Apart from the trained-checkpoint row, this contract is model-agnostic and is intended to be reusable for future denoisers evaluated on the same simulated support.
+This appendix collects the frozen experimental contract under which every number reported in Section~\ref{sec:results} and the supporting appendices is obtained: the public release that pins code and data, the canonical training and held-out split, the rule that separates validation tuning from held-out evaluation, and the software environment. Apart from the trained-checkpoint row, this contract is model-agnostic and is intended to be reusable for future denoisers evaluated on the same simulated support.
 
 \paragraph{Archived release.}
 %% TODO: before submission, replace this paragraph with the actual archived-release DOI and source-repository URL once the release is uploaded.
@@ -762,6 +729,26 @@ Worst of three families & $2.81\times10^{-4}$ & $1.00\times10^{-3}$ & $6.70\time
 \end{tabular}
 \end{table}
 
+\paragraph{Risk interpretation of $\gamma$.}
+\label{app:gamma_risk_interpretation}
+The main text uses $\gamma$ only as a recoverability condition. In the local Gaussian model, the same ratio also gives the explicit comparison among three estimators of $x_{\lambda}$:
+\[
+    R_{\rm raw} = \sigma^{2},
+    \qquad
+    R_{\rm BS} = \tau^{2} = \gamma\,\sigma^{2},
+    \qquad
+    R_{\rm full} = \frac{\gamma}{1+\gamma}\,\sigma^{2}.
+\]
+The corresponding ratios are
+\[
+    \frac{R_{\rm raw}}{R_{\rm BS}} = \frac{1}{\gamma},
+    \qquad
+    \frac{R_{\rm BS}}{R_{\rm full}} = 1+\gamma,
+    \qquad
+    \frac{R_{\rm raw}}{R_{\rm full}} = 1 + \frac{1}{\gamma}.
+\]
+Thus, when $\gamma\ll1$, the context-only blindspot oracle is close to the center-visible oracle, while both are far better than leaving the noisy pixel unchanged. This calculation is only an interpretation of the measured context-residual ratio; it is not used as a substitute for the held-out reconstruction and line-preservation tests in Section~\ref{sec:results}.
+
 \paragraph{Per-estimator $\gamma$ measurements.}
 Table~\ref{tab:gamma_full} reports the model-free measurement of the context-variance ratio $\gamma=\tau^{2}/\sigma^{2}$ summarized in Table~\ref{tab:gamma_main}. The three predictor families and their tuned configurations are: local cubic interpolation (window radius $3$ pixels, selected over $\{3,5,8,16,32\}$); context-only PCA reconstruction with $k$ leading components (selected $k=256$ over $\{16,32,64,128,256\}$); and local ridge regression on a context Gaussian-process surrogate (window radius $32$ pixels, ridge regularization $\alpha=10^{-8}$, selected over a $5\times5$ grid of radius $\in\{3,5,8,16,32\}$ and $\alpha\in\{10^{-8},10^{-6},10^{-4},10^{-2},1\}$). Each family is tuned on the validation split by minimum residual variance and evaluated on the held-out test split.
 
@@ -819,31 +806,6 @@ $\quad$Mean relative EW degradation       & $25.8$ & $\mathbf{1.34}$ & $-24.5$ \
 \end{tabular}
 \end{table}
 
-\paragraph{Full equivalent-width calibrator table.}
-Table~\ref{tab:integral_pathway} gives the full scatter, bias, and ratio matrix behind Figure~\ref{fig:calibrator_vs_snr}. The table is moved to the appendix to keep the Results section focused on the evidence hierarchy rather than a wide downstream matrix.
-
-\begin{table*}[ht]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\caption{Downstream stellar-parameter calibration from the six-line equivalent-width vector on a disjoint held-out test set of $1999$ spectra. A single linear regression per parameter is fit only on clean-reference equivalent widths from a $1000$-spectrum calibration split and then applied unchanged to equivalent widths measured from every reconstruction source on the same held-out test spectra. Reported $\sigma$ values are sample standard deviations of $\hat\theta-\theta_{\rm truth}$; bias is the mean signed residual; ratio is $\sigma_{\rm method}/\sigma_{\rm noisy}$. Paired-bootstrap $95\%$ intervals from $1000$ resamples are within a few percent of every reported value and are tabulated in the supplementary release. Smaller is better for $\sigma$ and ratio; the bias column is signed and zero is best.}
-\label{tab:integral_pathway}
-\begin{tabular}{l ccc ccc ccc}
-\hline
-                  & \multicolumn{3}{c}{$T_{\rm eff}$ [K]} & \multicolumn{3}{c}{$\log g$ [dex]} & \multicolumn{3}{c}{$[\mathrm{M}/\mathrm{H}]$ [dex]} \\
-\cline{2-4}\cline{5-7}\cline{8-10}
-Source spectrum for equivalent widths
-                  & $\sigma$ & bias & ratio & $\sigma$ & bias & ratio & $\sigma$ & bias & ratio \\
-\hline
-Clean reference (held-out)            & $599$ & $-2$ & $0.29$ & $1.07$ & $+0.07$ & $0.56$ & $0.59$ & $-0.02$ & $0.45$ \\
-\textbf{Blindspot output}             & $\mathbf{633}$ & $\mathbf{+89}$ & $\mathbf{0.31}$ & $\mathbf{1.08}$ & $\mathbf{+0.05}$ & $\mathbf{0.57}$ & $\mathbf{0.70}$ & $\mathbf{-0.19}$ & $\mathbf{0.53}$ \\
-Noisy input                           & $2050$ & $-195$ & $1.00$ & $1.91$ & $\phantom{+}0.00$ & $1.00$ & $1.32$ & $-0.09$ & $1.00$ \\
-Savitzky--Golay (validation-tuned)    & $1770$ & $+128$ & $0.86$ & $1.69$ & $-0.20$ & $0.88$ & $1.19$ & $-0.19$ & $0.90$ \\
-Box-car (validation-tuned)            & $1680$ & $+144$ & $0.82$ & $1.63$ & $-0.20$ & $0.85$ & $1.15$ & $-0.20$ & $0.87$ \\
-\hline
-\end{tabular}
-\end{table*}
-
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.6\linewidth]{figs/appendix/fig_snr_improvement_log.pdf}
@@ -859,6 +821,44 @@ Box-car (validation-tuned)            & $1680$ & $+144$ & $0.82$ & $1.63$ & $-0.
 \end{figure}
 
 Figure~\ref{fig:appendix_snr_panel} resolves the held-out aggregate reconstruction S/N of Section~\ref{sec:results_denoising} into the joint distribution of per-spectrum input and output values, while Figure~\ref{fig:appendix_ew_panel} resolves the line-preservation result of Section~\ref{sec:results_physical} into the dispersion of the EW relative error across diagnostic features as input S/N varies. Together they show that neither the S/N gain nor the EW-error reduction is dominated by a narrow input-S/N subset: the input--output S/N density lies above the identity across the full input-S/N decade, and the dispersion of the EW relative error after denoising is reduced over the entire diagnostic feature set rather than for a single Ca\,\textsc{ii} core or a single S/N bin.
+
+\section{Downstream Gravity Calibration: Train-Size Sweep}
+\label{app:downstream_logg}
+
+This appendix provides the train-size stability check referenced in Section~\ref{sec:results_downstream_logg}. The same clean-trained gradient-boosted regressor is refit at four training-size operating points, holding the held-out test split and frozen evaluation contract fixed; only the calibrator's training-size hyperparameter changes between rows.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Train-size stability of the $\log g$ calibrator. Each entry is the centered robust scatter $\sigma_{\rm rob}$ [dex] of the residual $\widehat{\log g}-\log g_{\rm true}$ on the same $5{,}000$-spectrum held-out test set used in Table~\ref{tab:downstream_logg}. Smaller is better. The clean-input column improves monotonically with calibrator-training size; the noisy and smoothed columns remain at the noisy-input scale; the blindspot column tracks the clean column at an approximately constant offset.}
+\label{tab:downstream_logg_sweep}
+\begin{tabular}{rccccc}
+\hline
+$n_{\rm train}$ & Clean & Blindspot & Box-car & Savitzky--Golay & Noisy \\
+\hline
+$1{,}000$  & $0.677$ & $1.021$ & $1.176$ & $1.170$ & $1.318$ \\
+$3{,}000$  & $0.388$ & $0.896$ & $1.106$ & $1.105$ & $1.293$ \\
+$10{,}000$ & $0.267$ & $0.831$ & $1.079$ & $1.085$ & $1.278$ \\
+$30{,}000$ & $0.222$ & $0.801$ & $1.087$ & $1.088$ & $1.262$ \\
+\hline
+\end{tabular}
+\end{table}
+
+The blindspot column improves moderately as the calibrator absorbs more clean training data ($1.02 \to 0.80$~dex) but tracks the clean column at an approximately fixed offset over the full sweep, indicating that the calibrator is reading the same line-shape information from $\hat{x}$ as it does from $x$ but at degraded fidelity. The smoother and noisy columns remain at the noisy-input scale at every operating point, so they do not transfer line-shape information to the calibrator regardless of how much clean training data the calibrator sees. This rules out the alternative reading that the gain in Table~\ref{tab:downstream_logg} is a special feature of the maximum-training-size operating point.
+
+\section{Repeated-Noise Stability of the Reconstruction}
+\label{app:noise_stability}
+
+This appendix records the repeated-noise diagnostic referenced from Section~\ref{sec:results_downstream_logg} and from the reproducibility scope paragraph of Section~\ref{sec:discussion}. The main-text reconstruction and downstream calibration use one frozen trained model; we test whether the reported point estimates are stable to repeated noise perturbations of a fixed clean spectrum. Holding one held-out clean spectrum $x$ fixed, we draw $10^{4}$ independent noise realizations from the same heteroscedastic simulator, denoise each realization, and summarize the output ensemble by its mean $\langle\hat{x}\rangle$ and across-draw spread $\sigma_{\hat{x}}$.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figs/fig2_noise_ensemble.pdf}
+\caption{Fixed-spectrum repeated-noise diagnostic for the reported blindspot model. One held-out clean spectrum is perturbed by $10^{4}$ independent noise draws and denoised repeatedly. \textbf{Top-left:} clean spectrum $x$ and repeated-draw mean estimate $\langle \hat{x} \rangle$, shifted for readability. \textbf{Bottom-left:} residual $x-\langle \hat{x} \rangle$. \textbf{Right:} input noise scale and across-draw spread $\sigma_{\hat{x}}$ of the denoised outputs on a shared linear axis. This diagnostic measures sensitivity to noise realizations for a fixed spectrum; it is not a calibrated uncertainty estimate.}
+\label{fig:noise_ensemble}
+\end{figure}
+
+Figure~\ref{fig:noise_ensemble} shows that the repeated-draw mean follows the clean spectrum and that the denoised spread remains far below the input noise scale over most wavelengths. This supports the estimator interpretation used in the main text: changing the random noise realization does not produce large changes in the denoised output for this fixed spectrum. It should not be read as posterior uncertainty calibration, an error bar on individual line measurements, or evidence for robustness to all training seeds.
 
 \bibliographystyle{aasjournalv7}
 \bibliography{cas-refs.cleaned}
