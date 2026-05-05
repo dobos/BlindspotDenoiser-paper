@@ -419,7 +419,7 @@ Exact model hyperparameters, evaluation-contract details, and validation-tuning 
 \section{Results}
 \label{sec:results}
 
-We evaluate one frozen blindspot checkpoint in the simulated BOSZ/PFS-like low-S/N benchmark. The model is trained only on noisy spectra; clean spectra enter only after training, for reconstruction metrics and downstream tests. The Results section asks three questions: whether the reconstruction recovers the spectrum, whether a clean-trained gravity estimator can read the denoised spectrum, and whether the absorption-line features are preserved rather than smoothed away. All numbers in Sections~\ref{sec:results_denoising} and~\ref{sec:results_physical} are measured on the canonical held-out reconstruction split of $1000$ spectra with $10$ independent noise realizations per spectrum; the downstream calibrator in Section~\ref{sec:results_downstream_logg} uses a separate $5{,}000$-spectrum held-out test partition of the same scope-restricted BOSZ library, disjoint from the calibrator-training set. Clean spectra are used only for evaluation.
+We evaluate one frozen blindspot checkpoint in the simulated BOSZ/PFS-like low-S/N benchmark. The model is trained only on noisy spectra; clean spectra enter only after training, for reconstruction metrics and downstream tests. The Results section asks three questions: whether the reconstruction recovers the spectrum, whether clean-trained stellar-label estimators can read the denoised spectrum, and whether the absorption-line features are preserved rather than smoothed away. All numbers in Sections~\ref{sec:results_denoising} and~\ref{sec:results_physical} are measured on the canonical held-out reconstruction split of $1000$ spectra with $10$ independent noise realizations per spectrum; the downstream calibrator in Section~\ref{sec:results_downstream_logg} uses a separate $5{,}000$-spectrum held-out test partition of the same scope-restricted BOSZ library, disjoint from the calibrator-training set. Clean spectra are used only for evaluation.
 
 \subsection{Reconstruction performance on the held-out spectra}
 \label{sec:results_denoising}
@@ -455,12 +455,19 @@ PCA, $k\!=\!16$ (clean-template) & linear, clean reference & $56.0$ & $53.3$ [$2
 
 The comparison is stronger than ``better than the noisy input.'' The blindspot row clears the validation-tuned pixel-domain filter, the noisy-only PCA projection, and the non-deployable clean-template PCA reference, so the gain is not explained by importing clean targets, by tuning a conventional smoother, or by a fixed-rank linear reconstruction of the training support. The input--output S/N density in Figure~\ref{fig:appendix_snr_panel} also stays above the identity line across the input-S/N decade, so the headline gain is not concentrated in a small subset of easy spectra. A perturbation audit verifies the central-pixel exclusion property numerically, and a supervised clean-target U-Net reference bounds the improvement available with paired clean training data; both are detailed in Appendix~\ref{app:architecture_integrity}.
 
-\subsection{Downstream surface-gravity calibrator transfer}
+\subsection{Downstream clean-trained calibrator transfer}
 \label{sec:results_downstream_logg}
 
-The reconstruction metric is not the endpoint for Galactic Archaeology. Surface gravity is the stellar label most directly tied to the dwarf--giant decision, so we next ask whether the denoised spectra remain readable to an estimator trained only on clean spectra. We train a full-spectrum $\log g$ calibrator on clean spectra, freeze it, and apply it unchanged to noisy, smoothed, and blindspot-denoised held-out spectra.
+The reconstruction metric is not the endpoint for Galactic Archaeology. A denoiser is useful only if spectra reconstructed from noisy observations remain readable to downstream estimators that were trained on clean spectra. We therefore train full-spectrum stellar-label calibrators on clean spectra, freeze them, and apply them unchanged to noisy, smoothed, and blindspot-denoised held-out spectra.
 
-The calibrator is a gradient-boosted regression-tree model (LightGBM, default hyperparameters) fit on the full continuum-normalized flux vector of $30{,}000$ clean training spectra with the BOSZ $\log g$ label as the target. Calibrator training and evaluation use a labeled BOSZ pool of $50{,}000$ spectra drawn from the same scope-restricted library as the reconstruction split, partitioned into a $30{,}000$-spectrum calibrator-training set and a disjoint $5{,}000$-spectrum held-out test set; the spectra used as $\hat{x}$ in this section are the blindspot reconstructions of those held-out spectra. The trained model is then frozen and applied unchanged to five inputs on that test set: clean reference, blindspot output $\hat{x}$, noisy input $y$, the validation-tuned box-car smoother, and the validation-tuned Savitzky--Golay smoother. The clean-input row is an upper reference for what the fixed map can extract under the simulator label distribution; it is not a deployable comparison.
+The calibrator is a gradient-boosted regression-tree model (LightGBM, default hyperparameters) fit on the full continuum-normalized flux vector of $30{,}000$ clean training spectra. Calibrator training and evaluation use a labeled BOSZ pool of $50{,}000$ spectra drawn from the same scope-restricted library as the reconstruction split, partitioned into a $30{,}000$-spectrum calibrator-training set and a disjoint $5{,}000$-spectrum held-out test set. The trained model is then frozen and applied unchanged to five representations of the same held-out spectra: clean input, blindspot output $\hat{x}$, noisy input $y$, the validation-tuned box-car smoother, and the validation-tuned Savitzky--Golay smoother. The clean-input row is an upper reference for what the fixed map can extract under the simulator label distribution; it is not a deployable comparison.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figs/fig4_downstream_clean_domain_transfer.pdf}
+\caption{Frozen clean-trained downstream calibration after denoising. Full-spectrum LightGBM calibrators are trained only on clean spectra and then evaluated, without refitting, on the same held-out spectra represented as clean inputs, blindspot outputs, box-car smooths, Savitzky--Golay smooths, or noisy inputs. \textbf{Left:} centered robust-scatter ratio relative to the noisy input at $n_{\rm train}=30{,}000$ for four BOSZ labels; small points are five random splits, large markers are split means, and bars are split standard deviations. \textbf{Right:} residual distributions for the primary $\log g$ audit on the $5{,}000$-spectrum held-out partition in Table~\ref{tab:downstream_logg}; side labels report the mean bias $\mu$ and centered robust scatter $\sigma$ in dex. The paired-bootstrap blindspot/noisy ratios for this $\log g$ split are $0.64$ $[0.61,\,0.66]$ for $\sigma_{\rm rob}$ and $0.70$ $[0.68,\,0.72]$ for MAE.}
+\label{fig:downstream_clean_domain_transfer}
+\end{figure}
 
 \begin{table}[htbp]
 \centering
@@ -471,7 +478,7 @@ The calibrator is a gradient-boosted regression-tree model (LightGBM, default hy
 \hline
 Input spectrum & $\sigma_{\rm rob}$ [dex] & MAE [dex] & Bias [dex] & $R^{2}$ \\
 \hline
-Clean reference (upper bound)         & $0.222$ & $0.205$ & $+0.001$ & $0.940$ \\
+Clean input (upper reference)         & $0.222$ & $0.205$ & $+0.001$ & $0.940$ \\
 \textbf{Blindspot output (ours)}      & $\mathbf{0.801}$ & $\mathbf{0.670}$ & $\mathbf{+0.020}$ & $\mathbf{0.463}$ \\
 Box-car smoother (val.\ tuned)        & $1.087$ & $0.867$ & $-0.086$ & $0.137$ \\
 Savitzky--Golay smoother (val.\ tuned)& $1.088$ & $0.871$ & $-0.089$ & $0.127$ \\
@@ -480,14 +487,9 @@ Noisy input                           & $1.262$ & $0.958$ & $-0.170$ & $0.011$ \
 \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figs/fig4_calibrator_vs_snr.pdf}
-\caption{Full-spectrum downstream surface-gravity calibration after denoising. A LightGBM calibrator is trained only on clean spectra, frozen, and then evaluated on the same held-out spectra represented as clean references, blindspot outputs, box-car smooths, Savitzky--Golay smooths, or noisy inputs. \textbf{Left:} residual distributions $r=\widehat{\log g}-\log g_{\rm true}$; the blindspot residuals are much narrower than noisy or smoothed residuals and remain centered near zero. \textbf{Middle:} centered robust scatter and mean absolute residual summarize the same ordering. \textbf{Right:} the ordering is stable as the clean calibrator-training size varies from $10^{3}$ to $3\times10^{4}$ spectra.}
-\label{fig:downstream_logg_calibrator}
-\end{figure}
+Figure~\ref{fig:downstream_clean_domain_transfer} shows that the blindspot output transfers better than noisy or conventionally smoothed spectra across all four labels. At the maximum training size, the blindspot/noisy robust-scatter ratios are $0.16$ for $T_{\rm eff}$, $0.63$ for $\log g$, $0.31$ for $[\mathrm{M/H}]$, and $0.14$ for RV, with the same ordering across the five split seeds. The classical smoothers can reduce scatter for some labels, but they remain above the blindspot point in every label and stay close to the noisy-input scale for the surface-gravity and metallicity audits.
 
-The clean-input row reaches $R^{2}=0.940$, so the $\log g$ task itself is not degenerate: the fixed mapping encodes gravity-discriminating spectral information in this BOSZ support. Against that reference, the blindspot output recovers the information that the noisy input loses --- the centered robust scatter falls from $1.262$ on the noisy input to $0.801$~dex, MAE falls from $0.958$ to $0.670$~dex, and the noisy-input bias is largely removed. The two validation-tuned smoothers do not transfer: their residual statistics stay close to the noisy-input scale. The improvement therefore depends on the line-preserving reconstructions characterized in Section~\ref{sec:results_physical}, not on generic noise reduction by a conventional smoother.
+The $\log g$ row is the primary downstream audit because surface gravity is the label most directly tied to dwarf--giant selection. The clean-input row reaches $R^{2}=0.940$, so the task itself is not degenerate: the fixed mapping encodes gravity-discriminating spectral information in this BOSZ support. Against that reference, the blindspot output recovers the information that the noisy input loses --- the centered robust scatter falls from $1.262$ on the noisy input to $0.801$~dex, MAE falls from $0.958$ to $0.670$~dex, and the noisy-input bias is largely removed. The two validation-tuned smoothers do not transfer for this primary audit: their residual statistics stay close to the noisy-input scale. The improvement therefore depends on the line-preserving reconstructions characterized in Section~\ref{sec:results_physical}, not on generic noise reduction by a conventional smoother.
 
 The ordering is stable across calibrator complexity. Refitting the same regressor at $n_{\rm train}\!\in\!\{1{,}000,\,3{,}000,\,10{,}000,\,30{,}000\}$ shows that the clean-input scatter improves monotonically with calibrator-training size while the noisy and smoother rows stay flat at the noisy-input scale, and the blindspot row tracks the clean column at an approximately constant offset over the full sweep (Appendix~\ref{app:downstream_logg}, Table~\ref{tab:downstream_logg_sweep}). The reduction reported in Table~\ref{tab:downstream_logg} is therefore not a special feature of the maximum-training-size operating point.
 
@@ -586,7 +588,7 @@ Artifact & Role & Reproduces \\
 \hline
 Trained checkpoint & frozen denoising model & Table~\ref{tab:main_baselines}, Table~\ref{tab:main_results}; Figs.~\ref{fig:representative_spectrum},~\ref{fig:caII_zoom},~\ref{fig:noise_ensemble} \\
 Reconstruction held-out test split & frozen reconstruction set & Tables~\ref{tab:main_baselines},~\ref{tab:main_results}; Figs.~\ref{fig:representative_spectrum},~\ref{fig:caII_zoom} \\
-Downstream calibrator split & clean-trained frozen estimator protocol & Table~\ref{tab:downstream_logg}; Fig.~\ref{fig:downstream_logg_calibrator} \\
+Downstream calibrator split & clean-trained frozen estimator protocol & Table~\ref{tab:downstream_logg}; Fig.~\ref{fig:downstream_clean_domain_transfer} \\
 Metric implementation & frozen scorer & all metric columns \\
 Validation split + tuning record & per-baseline grids & Table~\ref{tab:main_baselines}, Table~\ref{tab:baseline_grids} \\
 $\gamma$ predictor record & per-estimator measurements & Table~\ref{tab:gamma_main}, Table~\ref{tab:gamma_full} \\
