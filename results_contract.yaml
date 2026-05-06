@@ -1,0 +1,163 @@
+paper_id: blindspotdenoiser
+section_keyword: results
+field: astro
+source_sha: 4935bf307cfbe6c1
+voice_contract:
+  mode: archival
+  lead_with: finding
+  forbid_hype_voice: true
+  forbid_setup_verbs: true
+  forbid_meta_framing: true
+  max_new_concepts_per_paragraph: 3
+reader_state:
+  anchor_terms_defined_in_abstract: []
+  anchor_max_body_uses: 0
+  setup_metadata_in_methods:
+  - 'TODO: Methods setup already known to the reader'
+  forward_references_required: []
+narrative_arc:
+  pattern: claim_order_not_chronology
+  overall_lead_sentence: 'TODO: first Results finding, not a section roadmap'
+  beats: []
+subsections:
+- subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+  title: Reconstruction performance on the held-out spectra
+  role: finding_update
+  hero_claim_id: C1
+  answers_question: 'TODO: reader question answered by this Results subsection'
+  evidence_artifacts:
+    figures:
+    - fig:representative_spectrum
+    - sec:results_denoising
+    tables:
+    - tab:main_baselines
+    numbers: []
+  forbidden_content:
+  - setup
+  - motivation
+  - future_work
+  - row_by_row_table_readout
+  closing_role: scope_boundary
+  paragraphs:
+  - paragraph_id: results-1-reconstruction-performance-on-the-held-out-spect.p1
+    section_id: results-1-reconstruction-performance-on-the-held-out-spect
+    reader_question: 'TODO: what should the reader update after this paragraph?'
+    role: finding_update
+    claim_id: C1
+    evidence_id: sec:results_denoising
+    terms_introduced: []
+    numbers_used: []
+    delete_test: Without this paragraph, the subsection has no explicit claim-evidence
+      carrier.
+- subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+  title: Downstream clean-trained calibrator transfer
+  role: finding_update
+  hero_claim_id: C2
+  answers_question: 'TODO: reader question answered by this Results subsection'
+  evidence_artifacts:
+    figures:
+    - fig:downstream_clean_domain_transfer
+    - sec:results_downstream_logg
+    tables:
+    - tab:downstream_logg
+    numbers: []
+  forbidden_content:
+  - setup
+  - motivation
+  - future_work
+  - row_by_row_table_readout
+  closing_role: scope_boundary
+  paragraphs:
+  - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p1
+    section_id: results-2-downstream-clean-trained-calibrator-transfer
+    reader_question: 'TODO: what should the reader update after this paragraph?'
+    role: finding_update
+    claim_id: C2
+    evidence_id: sec:results_downstream_logg
+    terms_introduced: []
+    numbers_used: []
+    delete_test: Without this paragraph, the subsection has no explicit claim-evidence
+      carrier.
+- subsection_id: results-3-line-preservation-diagnostics
+  title: Line-preservation diagnostics
+  role: finding_update
+  hero_claim_id: C3
+  answers_question: 'TODO: reader question answered by this Results subsection'
+  evidence_artifacts:
+    figures:
+    - fig:caII_zoom
+    - sec:results_physical
+    tables:
+    - tab:main_results
+    numbers: []
+  forbidden_content:
+  - setup
+  - motivation
+  - future_work
+  - row_by_row_table_readout
+  closing_role: scope_boundary
+  paragraphs:
+  - paragraph_id: results-3-line-preservation-diagnostics.p1
+    section_id: results-3-line-preservation-diagnostics
+    reader_question: 'TODO: what should the reader update after this paragraph?'
+    role: finding_update
+    claim_id: C3
+    evidence_id: sec:results_physical
+    terms_introduced: []
+    numbers_used: []
+    delete_test: Without this paragraph, the subsection has no explicit claim-evidence
+      carrier.
+display_plan:
+- display_id: sec:results_denoising
+  kind: display
+  subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+  function: 'TODO: evidence role'
+- display_id: fig:representative_spectrum
+  kind: figure
+  subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+  function: 'TODO: evidence role'
+- display_id: tab:main_baselines
+  kind: table
+  subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+  function: 'TODO: evidence role'
+- display_id: sec:results_downstream_logg
+  kind: display
+  subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+  function: 'TODO: evidence role'
+- display_id: fig:downstream_clean_domain_transfer
+  kind: figure
+  subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+  function: 'TODO: evidence role'
+- display_id: tab:downstream_logg
+  kind: table
+  subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+  function: 'TODO: evidence role'
+- display_id: sec:results_physical
+  kind: display
+  subsection_id: results-3-line-preservation-diagnostics
+  function: 'TODO: evidence role'
+- display_id: tab:main_results
+  kind: table
+  subsection_id: results-3-line-preservation-diagnostics
+  function: 'TODO: evidence role'
+- display_id: fig:caII_zoom
+  kind: figure
+  subsection_id: results-3-line-preservation-diagnostics
+  function: 'TODO: evidence role'
+forbidden_headlines:
+- training_loss
+- checkpoint_epoch
+claim_chain:
+- claim_id: C1
+  evidence_id: sec:results_denoising
+  rules_out: 'TODO: alternative explanation'
+  scope_limit: 'TODO: dataset/regime/assumption boundary'
+- claim_id: C2
+  evidence_id: sec:results_downstream_logg
+  rules_out: 'TODO: alternative explanation'
+  scope_limit: 'TODO: dataset/regime/assumption boundary'
+- claim_id: C3
+  evidence_id: sec:results_physical
+  rules_out: 'TODO: alternative explanation'
+  scope_limit: 'TODO: dataset/regime/assumption boundary'
+residue_signature: 'TODO: reader exit state after Results.'
