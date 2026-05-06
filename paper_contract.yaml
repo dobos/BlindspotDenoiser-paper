@@ -1,0 +1,134 @@
+# BlindSpot stand-alone paper — per-section + per-paragraph contract.
+#
+# Schema: read by `paper_tex_lint.py --mode section-contract --contract <this>`.
+# Provides per-subsection stress_keywords (S1 lint) + closure_mechanism_keywords
+# (D8 lint), plus per-paragraph forbidden_in_paragraph_1 / interpretation_required
+# fields documented in plan/2026-05-06-paper-write-skill-gap-abstraction.md.
+#
+# This is the BlindSpot-specific override. The four results subsections are
+# instrumented; abstract / methods / conclusion are governed by A8 / A11 /
+# paper_abstract_qc.py and paper_conclusion_qc.py respectively.
+paper_id: blindspot-stand-alone
+field: astro
+last_modified: 2026-05-06
+sections:
+  # § 5.1 Reconstruction performance on the held-out spectra
+  - label: sec:results_denoising
+    role: hero_finding
+    stress_keywords:
+      - reconstruction S/N
+      - blindspot output
+      - factor of about 16
+      - clean-template
+    closure_mechanism_keywords:
+      - identity line
+      - input-S/N
+      - input-output
+      - exclusion
+      - perturbation audit
+      - clean-target
+    paragraphs:
+      - paragraph_role: motivation+headline
+        position: 1
+        forbidden_in_paragraph_1:
+          - default hyperparameters
+          - LightGBM
+          - we train
+        interpretation_required: false
+      - paragraph_role: closure_mechanism
+        position: -1
+        open_with_mechanism: true
+
+  # § 5.2 Downstream clean-trained calibrator transfer
+  - label: sec:results_downstream_logg
+    role: downstream_transfer
+    stress_keywords:
+      - dwarf--giant
+      - dwarf-giant
+      - surface gravity
+      - clean-trained
+      - calibrator
+    closure_mechanism_keywords:
+      - line preservation
+      - line-preserving
+      - approximately fixed offset
+      - calibrator's clean-input
+      - manifold
+      - operating-point
+      - feature manifold
+    paragraphs:
+      - paragraph_role: motivation+setup
+        position: 1
+        forbidden_in_paragraph_1:
+          - LightGBM
+          - "30,000"
+          - "5,000"
+        interpretation_required: false
+      - paragraph_role: log_g_hero
+        position: 2
+        must_anchor:
+          - tab:downstream_logg
+          - fig:downstream_clean_domain_transfer
+        interpretation_required: true
+      - paragraph_role: 4_label_robustness
+        position: 3
+        must_anchor:
+          - fig:downstream_clean_domain_transfer
+        interpretation_required: true
+        must_explain_label_difficulty_rank: true
+      - paragraph_role: closure_mechanism
+        position: -1
+        closure_mechanism_keywords:
+          - approximately fixed offset
+          - feature manifold
+          - operating-point
+        open_with_mechanism: true
+
+  # § 5.3 Line-preservation diagnostics
+  - label: sec:results_physical
+    role: line_preservation
+    stress_keywords:
+      - line preservation
+      - line-sensitive
+      - equivalent-width
+      - polarity flips
+      - Ca\,\textsc{ii}
+      - "Ca II"
+    closure_mechanism_keywords:
+      - line preservation
+      - line-preserving
+      - generic smoothing
+      - scope
+      - scoped
+      - support
+      - continuum-normalized
+    paragraphs:
+      - paragraph_role: motivation
+        position: 1
+        forbidden_in_paragraph_1:
+          - default hyperparameters
+        interpretation_required: false
+      - paragraph_role: diagnostics_hero
+        position: 2
+        must_anchor:
+          - tab:main_results
+          - fig:caII_zoom
+        interpretation_required: true
+      - paragraph_role: closure_mechanism+scope
+        position: -1
+        closure_mechanism_keywords:
+          - line preservation
+          - generic smoothing
+          - scoped
+        open_with_mechanism: true
+
+caption_constraints:
+  - element: fig:downstream_clean_domain_transfer
+    no_duplicate_with: tab:downstream_logg
+    no_duplicate_pattern: "\\d+\\.\\d+ \\[\\d+\\.\\d+,\\s*\\d+\\.\\d+\\]"
+
+table_precision:
+  - table_label: tab:downstream_logg
+    column: Bias
+    forbid_literal_zero: true
+    min_dp: 3
