@@ -1,7 +1,7 @@
 paper_id: blindspotdenoiser
 section_keyword: results
 field: astro
-source_sha: 4935bf307cfbe6c1
+source_sha: 353708569dd3d221
 voice_contract:
   mode: archival
   lead_with: finding
@@ -10,154 +10,261 @@ voice_contract:
   forbid_meta_framing: true
   max_new_concepts_per_paragraph: 3
 reader_state:
-  anchor_terms_defined_in_abstract: []
-  anchor_max_body_uses: 0
+  anchor_terms_defined_in_abstract:
+    - blindspot output
+    - noisy input
+    - reconstruction S/N
+    - log g calibrator
+  anchor_max_body_uses: 6
   setup_metadata_in_methods:
-  - 'TODO: Methods setup already known to the reader'
+    - blindspot exclusion invariant (Algorithm 1) - Methods 3.2
+    - noisy-target Huber loss and consistency identity - Methods 3.1
+    - per-spectrum reconstruction-S/N definition (Equation snr_def) - Methods 4
+    - canonical simulated support and split definitions (Table 1) - Methods 4
+    - calibrator training pool, split sizes, evaluation rule - Appendix A.2
   forward_references_required: []
 narrative_arc:
   pattern: claim_order_not_chronology
-  overall_lead_sentence: 'TODO: first Results finding, not a section roadmap'
-  beats: []
+  overall_lead_sentence: |
+    On the held-out reconstruction split, mean per-spectrum reconstruction S/N rises from 7.8 on the noisy input to 124 on the blindspot output, a factor of about 16.
+  beats:
+    - reconstruction-scale finding leads with comparison against tuned baselines
+    - line-preservation diagnostics rule out continuum filling as the source of the gain
+    - downstream clean-trained calibrator transfer carries the reconstruction gain into a label-level estimator
 subsections:
-- subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-  title: Reconstruction performance on the held-out spectra
-  role: finding_update
-  hero_claim_id: C1
-  answers_question: 'TODO: reader question answered by this Results subsection'
-  evidence_artifacts:
-    figures:
-    - fig:representative_spectrum
-    - sec:results_denoising
-    tables:
-    - tab:main_baselines
-    numbers: []
-  forbidden_content:
-  - setup
-  - motivation
-  - future_work
-  - row_by_row_table_readout
-  closing_role: scope_boundary
-  paragraphs:
-  - paragraph_id: results-1-reconstruction-performance-on-the-held-out-spect.p1
-    section_id: results-1-reconstruction-performance-on-the-held-out-spect
-    reader_question: 'TODO: what should the reader update after this paragraph?'
+  - subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+    title: Reconstruction performance on the held-out spectra
     role: finding_update
-    claim_id: C1
-    evidence_id: sec:results_denoising
-    terms_introduced: []
-    numbers_used: []
-    delete_test: Without this paragraph, the subsection has no explicit claim-evidence
-      carrier.
-- subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-  title: Downstream clean-trained calibrator transfer
-  role: finding_update
-  hero_claim_id: C2
-  answers_question: 'TODO: reader question answered by this Results subsection'
-  evidence_artifacts:
-    figures:
-    - fig:downstream_clean_domain_transfer
-    - sec:results_downstream_logg
-    tables:
-    - tab:downstream_logg
-    numbers: []
-  forbidden_content:
-  - setup
-  - motivation
-  - future_work
-  - row_by_row_table_readout
-  closing_role: scope_boundary
-  paragraphs:
-  - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p1
-    section_id: results-2-downstream-clean-trained-calibrator-transfer
-    reader_question: 'TODO: what should the reader update after this paragraph?'
+    hero_claim_id: C1
+    answers_question: |
+      Does noisy-only blindspot training raise reconstruction S/N on a frozen low-S/N benchmark above what validation-tuned classical filters and noisy-PCA can reach?
+    evidence_artifacts:
+      figures:
+        - fig:representative_spectrum
+        - sec:results_denoising
+      tables:
+        - tab:main_baselines
+      numbers:
+        - 7.8
+        - 124
+        - 27.2
+        - 54.4
+        - 56.0
+    forbidden_content:
+      - setup
+      - motivation
+      - future_work
+      - row_by_row_table_readout
+    closing_role: scope_boundary
+    paragraphs:
+      - paragraph_id: results-1-reconstruction-performance-on-the-held-out-spect.p1
+        section_id: results-1-reconstruction-performance-on-the-held-out-spect
+        reader_question: |
+          What is the headline reconstruction-scale change between noisy input and blindspot output?
+        role: finding_update
+        claim_id: C1
+        evidence_id: sec:results_denoising
+        terms_introduced: []
+        numbers_used:
+          - 7.8
+          - 124
+        delete_test: |
+          Without this paragraph, Results has no quantitative reconstruction headline; the reader reaches the downstream subsection with no magnitude anchor.
+      - paragraph_id: results-1-reconstruction-performance-on-the-held-out-spect.p2
+        section_id: results-1-reconstruction-performance-on-the-held-out-spect
+        reader_question: |
+          Could the gain be explained by importing clean targets, by tuning a smoother, or by linear projection?
+        role: scope_boundary
+        claim_id: C1
+        evidence_id: sec:results_denoising
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the reader cannot rule out tuned-classical-baseline and clean-template-PCA explanations.
+  - subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+    title: Downstream clean-trained calibrator transfer
     role: finding_update
-    claim_id: C2
-    evidence_id: sec:results_downstream_logg
-    terms_introduced: []
-    numbers_used: []
-    delete_test: Without this paragraph, the subsection has no explicit claim-evidence
-      carrier.
-- subsection_id: results-3-line-preservation-diagnostics
-  title: Line-preservation diagnostics
-  role: finding_update
-  hero_claim_id: C3
-  answers_question: 'TODO: reader question answered by this Results subsection'
-  evidence_artifacts:
-    figures:
-    - fig:caII_zoom
-    - sec:results_physical
-    tables:
-    - tab:main_results
-    numbers: []
-  forbidden_content:
-  - setup
-  - motivation
-  - future_work
-  - row_by_row_table_readout
-  closing_role: scope_boundary
-  paragraphs:
-  - paragraph_id: results-3-line-preservation-diagnostics.p1
-    section_id: results-3-line-preservation-diagnostics
-    reader_question: 'TODO: what should the reader update after this paragraph?'
+    hero_claim_id: C2
+    answers_question: |
+      Does an unmodified clean-trained surface-gravity calibrator read more label information from blindspot-denoised spectra than from noisy or smoothed inputs?
+    evidence_artifacts:
+      figures:
+        - fig:downstream_clean_domain_transfer
+        - sec:results_downstream_logg
+      tables:
+        - tab:downstream_logg
+      numbers:
+        - 1.26
+        - 0.80
+    forbidden_content:
+      - setup
+      - motivation
+      - future_work
+      - row_by_row_table_readout
+    closing_role: scope_boundary
+    paragraphs:
+      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p1
+        section_id: results-2-downstream-clean-trained-calibrator-transfer
+        reader_question: |
+          Why does this matter beyond reconstruction error?
+        role: motivation
+        claim_id: C2
+        evidence_id: sec:results_downstream_logg
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the reader does not see why a fixed downstream estimator is the right test of denoising usefulness.
+      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p2
+        section_id: results-2-downstream-clean-trained-calibrator-transfer
+        reader_question: |
+          What is the cross-label ordering and where do the smoothers fall?
+        role: finding_update
+        claim_id: C2
+        evidence_id: sec:results_downstream_logg
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the figure is uninterpreted: four labels with no narrative ordering or smoother failure mode.
+      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p3
+        section_id: results-2-downstream-clean-trained-calibrator-transfer
+        reader_question: |
+          What does the log g audit show, and what carries the gain?
+        role: finding_update
+        claim_id: C2
+        evidence_id: sec:results_downstream_logg
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the reader has no commitment of the downstream gain to line preservation rather than generic smoothing.
+      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p4
+        section_id: results-2-downstream-clean-trained-calibrator-transfer
+        reader_question: |
+          Is the result an artefact of the maximum calibrator-training-size operating point?
+        role: scope_boundary
+        claim_id: C2
+        evidence_id: sec:results_downstream_logg
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the reader cannot rule out the train-size sensitivity alternative explanation.
+  - subsection_id: results-3-line-preservation-diagnostics
+    title: Line-preservation diagnostics
     role: finding_update
-    claim_id: C3
-    evidence_id: sec:results_physical
-    terms_introduced: []
-    numbers_used: []
-    delete_test: Without this paragraph, the subsection has no explicit claim-evidence
-      carrier.
+    hero_claim_id: C3
+    answers_question: |
+      Does the reconstruction S/N gain come with line preservation, or with continuum filling that would silently destroy stellar-analysis information?
+    evidence_artifacts:
+      figures:
+        - fig:caII_zoom
+        - sec:results_physical
+      tables:
+        - tab:main_results
+      numbers:
+        - 0.117
+        - 0.092
+        - 0.143
+        - 0.00290
+        - 3.6
+    forbidden_content:
+      - setup
+      - motivation
+      - future_work
+      - row_by_row_table_readout
+    closing_role: scope_boundary
+    paragraphs:
+      - paragraph_id: results-3-line-preservation-diagnostics.p1
+        section_id: results-3-line-preservation-diagnostics
+        reader_question: |
+          Why is a separate line-sensitive diagnostic necessary on top of aggregate S/N?
+        role: motivation
+        claim_id: C3
+        evidence_id: sec:results_physical
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the reader has no reason to expect that aggregate S/N could be misleading and that line tests are needed.
+      - paragraph_id: results-3-line-preservation-diagnostics.p2
+        section_id: results-3-line-preservation-diagnostics
+        reader_question: |
+          What do the Ca II, polarity, and O2 diagnostics jointly show?
+        role: finding_update
+        claim_id: C3
+        evidence_id: sec:results_physical
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the table has no narrative interpretation and the reader cannot exclude the single-line-accident or smoothing-artefact alternatives.
+      - paragraph_id: results-3-line-preservation-diagnostics.p3
+        section_id: results-3-line-preservation-diagnostics
+        reader_question: |
+          What is the mechanism behind the downstream gain, and what is the scope of all Results-section claims?
+        role: scope_boundary
+        claim_id: C3
+        evidence_id: sec:results_physical
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, Results ends without committing the mechanism (line preservation) or scoping the claims to the simulated independent-noise benchmark.
 display_plan:
-- display_id: sec:results_denoising
-  kind: display
-  subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-  function: 'TODO: evidence role'
-- display_id: fig:representative_spectrum
-  kind: figure
-  subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-  function: 'TODO: evidence role'
-- display_id: tab:main_baselines
-  kind: table
-  subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-  function: 'TODO: evidence role'
-- display_id: sec:results_downstream_logg
-  kind: display
-  subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-  function: 'TODO: evidence role'
-- display_id: fig:downstream_clean_domain_transfer
-  kind: figure
-  subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-  function: 'TODO: evidence role'
-- display_id: tab:downstream_logg
-  kind: table
-  subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-  function: 'TODO: evidence role'
-- display_id: sec:results_physical
-  kind: display
-  subsection_id: results-3-line-preservation-diagnostics
-  function: 'TODO: evidence role'
-- display_id: tab:main_results
-  kind: table
-  subsection_id: results-3-line-preservation-diagnostics
-  function: 'TODO: evidence role'
-- display_id: fig:caII_zoom
-  kind: figure
-  subsection_id: results-3-line-preservation-diagnostics
-  function: 'TODO: evidence role'
+  - display_id: sec:results_denoising
+    kind: display
+    subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+    function: aggregate-reconstruction headline anchor
+  - display_id: fig:representative_spectrum
+    kind: figure
+    subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+    function: morphology evidence on a single faint held-out spectrum
+  - display_id: tab:main_baselines
+    kind: table
+    subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+    function: held-out reconstruction-S/N comparison against classical and PCA references
+  - display_id: sec:results_downstream_logg
+    kind: display
+    subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+    function: downstream-calibrator transfer subsection anchor
+  - display_id: fig:downstream_clean_domain_transfer
+    kind: figure
+    subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+    function: cross-label centred-scatter ratios + log g residual distribution on the held-out partition
+  - display_id: tab:downstream_logg
+    kind: table
+    subsection_id: results-2-downstream-clean-trained-calibrator-transfer
+    function: log g sigma_rob, MAE, bias, R^2 on five reconstruction inputs against the same fixed calibrator
+  - display_id: sec:results_physical
+    kind: display
+    subsection_id: results-3-line-preservation-diagnostics
+    function: line-preservation diagnostics subsection anchor
+  - display_id: tab:main_results
+    kind: table
+    subsection_id: results-3-line-preservation-diagnostics
+    function: per-line Ca II EW error, polarity flips, and O2 window diagnostics
+  - display_id: fig:caII_zoom
+    kind: figure
+    subsection_id: results-3-line-preservation-diagnostics
+    function: Ca II triplet morphology behind the equivalent-width table
 forbidden_headlines:
-- training_loss
-- checkpoint_epoch
+  - training_loss
+  - checkpoint_epoch
+  - validation_curve
+  - per_seed_variance
 claim_chain:
-- claim_id: C1
-  evidence_id: sec:results_denoising
-  rules_out: 'TODO: alternative explanation'
-  scope_limit: 'TODO: dataset/regime/assumption boundary'
-- claim_id: C2
-  evidence_id: sec:results_downstream_logg
-  rules_out: 'TODO: alternative explanation'
-  scope_limit: 'TODO: dataset/regime/assumption boundary'
-- claim_id: C3
-  evidence_id: sec:results_physical
-  rules_out: 'TODO: alternative explanation'
-  scope_limit: 'TODO: dataset/regime/assumption boundary'
-residue_signature: 'TODO: reader exit state after Results.'
+  - claim_id: C1
+    evidence_id: sec:results_denoising
+    rules_out: |
+      The gain is not explained by importing clean training targets (clean-template PCA stays at 56.0), by tuning a conventional smoother (Wavelet BayesShrink stays at 27.2), or by a fixed-rank linear reconstruction (noisy-PCA k=16 stays at 54.4).
+    scope_limit: |
+      Held-out canonical reconstruction split: 1000 BOSZ/PFS-like late-type spectra at mag 20.5-22.5 with 10 independent zero-mean per-pixel noise realizations each.
+  - claim_id: C2
+    evidence_id: sec:results_downstream_logg
+    rules_out: |
+      The downstream gain is not a generic smoothness consequence (validation-tuned box-car and Savitzky-Golay smoothers do not transfer for the log g audit) and is not a maximum-training-size operating-point artefact (Appendix sweep confirms ordering across n_train).
+    scope_limit: |
+      Disjoint 5,000-spectrum held-out test partition of the same scope-restricted BOSZ library, evaluated through a single LightGBM calibrator trained only on clean spectra; not a thresholded dwarf-giant classification metric.
+  - claim_id: C3
+    evidence_id: sec:results_physical
+    rules_out: |
+      The aggregate reconstruction-S/N gain is not delivered by continuum filling (Ca II EW errors fall by ~5x; polarity flips drop by ~100x; O2 window-restricted S/N rises rather than collapses).
+    scope_limit: |
+      Continuum-normalized, medium-resolution, late-type BOSZ/PFS-like spectra at magnitude 20.5-22.5 under independent zero-mean per-pixel noise; line measurements use fixed EW windows and a continuum-relative polarity statistic, not absolute spectrophotometry.
+residue_signature: |
+  After Results, the reader carries: a 16x reconstruction-S/N gain on a frozen low-S/N benchmark; the same gain reads through to a clean-trained log g calibrator that no smoother can reach; the absorption-line structure that the calibrator relies on is preserved rather than filled. All three findings are scoped to a continuum-normalized late-type BOSZ/PFS-like simulator with independent per-pixel noise.
