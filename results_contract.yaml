@@ -1,7 +1,7 @@
 paper_id: blindspotdenoiser
 section_keyword: results
 field: astro
-source_sha: 353708569dd3d221
+source_sha: d2dc15fa666b21d4
 voice_contract:
   mode: archival
   lead_with: finding
@@ -26,14 +26,14 @@ reader_state:
 narrative_arc:
   pattern: claim_order_not_chronology
   overall_lead_sentence: |
-    On the held-out reconstruction split, mean per-spectrum reconstruction S/N rises from 7.8 on the noisy input to 124 on the blindspot output, a factor of about 16.
+    On the reconstruction test split, mean per-spectrum reconstruction S/N rises from 7.6 on the noisy input to 122 on the blindspot output, a factor of about 16.
   beats:
     - reconstruction-scale finding leads with comparison against tuned baselines
     - line-preservation diagnostics rule out continuum filling as the source of the gain
     - downstream clean-trained calibrator transfer carries the reconstruction gain into a label-level estimator
 subsections:
-  - subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-    title: Reconstruction performance on the held-out spectra
+  - subsection_id: results-1-reconstruction-performance-on-the-test-spectra
+    title: Reconstruction performance on the test spectra
     role: finding_update
     hero_claim_id: C1
     answers_question: |
@@ -45,11 +45,11 @@ subsections:
       tables:
         - tab:main_baselines
       numbers:
-        - 7.8
-        - 124
-        - 27.2
-        - 54.4
-        - 56.0
+        - 7.6
+        - 122
+        - 26.6
+        - 54.0
+        - 55.7
     forbidden_content:
       - setup
       - motivation
@@ -57,8 +57,8 @@ subsections:
       - row_by_row_table_readout
     closing_role: scope_boundary
     paragraphs:
-      - paragraph_id: results-1-reconstruction-performance-on-the-held-out-spect.p1
-        section_id: results-1-reconstruction-performance-on-the-held-out-spect
+      - paragraph_id: results-1-reconstruction-performance-on-the-test-spectra.p1
+        section_id: results-1-reconstruction-performance-on-the-test-spectra
         reader_question: |
           What is the headline reconstruction-scale change between noisy input and blindspot output?
         role: finding_update
@@ -66,12 +66,12 @@ subsections:
         evidence_id: sec:results_denoising
         terms_introduced: []
         numbers_used:
-          - 7.8
-          - 124
+          - 7.6
+          - 122
         delete_test: |
           Without this paragraph, Results has no quantitative reconstruction headline; the reader reaches the downstream subsection with no magnitude anchor.
-      - paragraph_id: results-1-reconstruction-performance-on-the-held-out-spect.p2
-        section_id: results-1-reconstruction-performance-on-the-held-out-spect
+      - paragraph_id: results-1-reconstruction-performance-on-the-test-spectra.p2
+        section_id: results-1-reconstruction-performance-on-the-test-spectra
         reader_question: |
           Could the gain be explained by importing clean targets, by tuning a smoother, or by linear projection?
         role: scope_boundary
@@ -160,10 +160,10 @@ subsections:
       tables:
         - tab:main_results
       numbers:
-        - 0.117
-        - 0.092
-        - 0.143
-        - 0.00290
+        - 0.121
+        - 0.098
+        - 0.147
+        - 0.00302
         - 3.6
     forbidden_content:
       - setup
@@ -208,16 +208,16 @@ subsections:
 display_plan:
   - display_id: sec:results_denoising
     kind: display
-    subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
+    subsection_id: results-1-reconstruction-performance-on-the-test-spectra
     function: aggregate-reconstruction headline anchor
   - display_id: fig:representative_spectrum
     kind: figure
-    subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-    function: morphology evidence on a single faint held-out spectrum
+    subsection_id: results-1-reconstruction-performance-on-the-test-spectra
+    function: morphology evidence on a single faint test spectrum
   - display_id: tab:main_baselines
     kind: table
-    subsection_id: results-1-reconstruction-performance-on-the-held-out-spect
-    function: held-out reconstruction-S/N comparison against classical and PCA references
+    subsection_id: results-1-reconstruction-performance-on-the-test-spectra
+    function: test-set reconstruction-S/N comparison against classical and PCA references
   - display_id: sec:results_downstream_logg
     kind: display
     subsection_id: results-2-downstream-clean-trained-calibrator-transfer
