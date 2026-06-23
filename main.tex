@@ -715,21 +715,21 @@ Reconstruction signal-to-noise rises with estimator capacity, but the downstream
 \centering
 \footnotesize
 \setlength{\tabcolsep}{4.5pt}
-\caption{Consolidated per-method results on the test split. Reconstruction columns give the mean and median per-spectrum S/N (Equation~\ref{eq:snr_def}) with the $5$--$95\%$ range. The Ca\,\textsc{ii} EW (across-spectra triplet mean/median) and polarity-flip columns are the line-preservation diagnostics for the non-neural baselines, scored under the same aggregation as one another. The $\log g$ columns give the clean-trained calibrator residual scatter $\sigma_{\rm rob}$ (dex; smaller is better) and $R^2$, evaluated without refitting (Section~\ref{sec:results_downstream_logg}). Clean reference, clean-template PCA, and the supervised U-Net use clean data and are non-deployable. Em-dashes mark quantities not defined for a row or not measured under the baseline aggregation; the blindspot per-line EW diagnostics with bootstrap intervals are in Table~\ref{tab:main_results}.}
+\caption{Consolidated per-method results on the matched-redshift test set ($z_1$; $10{,}000$ spectra). Reconstruction columns give the mean and median per-spectrum S/N (Equation~\ref{eq:snr_def}) with the $5$--$95\%$ range. The Ca\,\textsc{ii} EW column is the across-spectra mean of the per-spectrum triplet-averaged equivalent-width relative error; the polarity column is the continuum-relative flip rate. Robust per-line Ca\,\textsc{ii} medians with bootstrap intervals are in Table~\ref{tab:main_results}. The $\log g$ columns give the clean-trained calibrator residual scatter $\sigma_{\rm rob}$ (dex; smaller is better) and $R^2$, evaluated without refitting (Section~\ref{sec:results_downstream_logg}). Clean reference, clean-template PCA, and the supervised U-Net use clean data and are non-deployable; em-dashes mark quantities not computed for a row.}
 \label{tab:appendix_baselines}
 \begin{tabular}{lcccccc}
 \hline
 Method & Mean S/N & Median S/N [$5$,$95$] & Ca\,\textsc{ii} EW & Polarity & $\log g\ \sigma_{\rm rob}$ & $\log g\ R^2$ \\
 \hline
 Clean reference & --- & --- & --- & --- & $0.22$ & $0.94$ \\
-Noisy input & $7.6$ & $6.8$ [$3.1$,$14.6$] & $3.09/0.845$ & $0.282$ & $1.26$ & $0.01$ \\
-Savitzky--Golay & $20.8$ & $19.1$ [$9.7$,$38.2$] & $1.89/0.588$ & $0.121$ & $1.11$ & $0.10$ \\
-Gaussian smoothing & $25.8$ & $23.1$ [$13.2$,$47.5$] & $1.49/0.662$ & $0.0842$ & $1.16$ & $0.05$ \\
-Median filter & $15.7$ & $14.3$ [$6.7$,$29.1$] & $2.21/0.645$ & $0.168$ & $1.13$ & $0.04$ \\
-Wavelet BayesShrink & $26.6$ & $24.2$ [$13.4$,$48.3$] & $1.50/0.695$ & $0.0804$ & $1.01$ & $0.13$ \\
-Noisy-PCA, $k\!=\!16$ & $54.0$ & $51.0$ [$26.4$,$91.0$] & $1.09/0.338$ & $0.0184$ & $1.29$ & $-0.05$ \\
-Clean-template PCA, $k\!=\!16$ & $55.7$ & $52.9$ [$27.1$,$93.0$] & $1.02/0.318$ & $0.0172$ & $1.28$ & $-0.05$ \\
-\textbf{Blindspot (ours)} & $\mathbf{122}$ & $\mathbf{109}$ [$\mathbf{45}$,$\mathbf{246}$] & --- & --- & $\mathbf{0.80}$ & $\mathbf{0.46}$ \\
+Noisy input & $7.6$ & $6.8$ [$3.1$,$14.6$] & $3.09$ & $0.282$ & $1.26$ & $0.01$ \\
+Savitzky--Golay & $20.8$ & $19.1$ [$9.7$,$38.2$] & $1.89$ & $0.121$ & $1.11$ & $0.10$ \\
+Gaussian smoothing & $25.8$ & $23.1$ [$13.2$,$47.5$] & $1.49$ & $0.0842$ & $1.16$ & $0.05$ \\
+Median filter & $15.7$ & $14.3$ [$6.7$,$29.1$] & $2.21$ & $0.168$ & $1.13$ & $0.04$ \\
+Wavelet BayesShrink & $26.6$ & $24.2$ [$13.4$,$48.3$] & $1.50$ & $0.0804$ & $1.01$ & $0.13$ \\
+Noisy-PCA, $k\!=\!16$ & $54.0$ & $51.0$ [$26.4$,$91.0$] & $1.09$ & $0.0184$ & $1.29$ & $-0.05$ \\
+Clean-template PCA, $k\!=\!16$ & $55.7$ & $52.9$ [$27.1$,$93.0$] & $1.02$ & $0.0172$ & $1.28$ & $-0.05$ \\
+\textbf{Blindspot (ours)} & $\mathbf{122}$ & $\mathbf{109}$ [$\mathbf{45}$,$\mathbf{246}$] & $\mathbf{0.51}$ & $\mathbf{0.003}$ & $\mathbf{0.80}$ & $\mathbf{0.46}$ \\
 Supervised U-Net & $154$ & $136$ [$55$,$319$] & --- & --- & --- & --- \\
 \hline
 \end{tabular}
