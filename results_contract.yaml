@@ -1,7 +1,7 @@
 paper_id: blindspotdenoiser
 section_keyword: results
 field: astro
-source_sha: 632c11593e45166b
+source_sha: c9fc1663ef003210
 voice_contract:
   mode: archival
   lead_with: finding
@@ -90,6 +90,7 @@ subsections:
     evidence_artifacts:
       figures:
         - sec:results_physical
+        - fig:caII_zoom
       tables:
         - tab:main_results
       numbers:
@@ -136,6 +137,7 @@ subsections:
     evidence_artifacts:
       figures:
         - sec:results_downstream_logg
+        - fig:downstream_clean_domain_transfer
       tables:
         - tab:downstream_logg
       numbers:
@@ -191,6 +193,10 @@ display_plan:
     kind: table
     subsection_id: results-2-line-preservation-diagnostics
     function: per-line Ca II EW error, polarity flips, and O2 window diagnostics
+  - display_id: fig:caII_zoom
+    kind: figure
+    subsection_id: results-2-line-preservation-diagnostics
+    function: Ca II triplet morphology evidence that line preservation is not only an aggregate metric effect
   - display_id: sec:results_downstream_logg
     kind: display
     subsection_id: results-3-downstream-clean-trained-calibrator-transfer
@@ -199,6 +205,10 @@ display_plan:
     kind: table
     subsection_id: results-3-downstream-clean-trained-calibrator-transfer
     function: log g sigma_rob, MAE, bias, R^2 on four reconstruction inputs against the same fixed calibrator
+  - display_id: fig:downstream_clean_domain_transfer
+    kind: figure
+    subsection_id: results-3-downstream-clean-trained-calibrator-transfer
+    function: downstream log g residual distributions and auxiliary four-label context
 forbidden_headlines:
   - training_loss
   - checkpoint_epoch
