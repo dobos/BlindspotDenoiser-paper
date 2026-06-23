@@ -1,7 +1,7 @@
 paper_id: blindspotdenoiser
 section_keyword: results
 field: astro
-source_sha: 451ec24d44858c22
+source_sha: 632c11593e45166b
 voice_contract:
   mode: archival
   lead_with: finding
@@ -37,7 +37,7 @@ subsections:
     role: finding_update
     hero_claim_id: C1
     answers_question: |
-      Does noisy-only blindspot training beat tuned classical and linear baselines by a wide margin, recover most of the supervised clean-target ceiling without ever seeing a clean spectrum, and do so by genuine line recovery rather than oversmoothing?
+      Does noisy-only blindspot training beat tuned classical and linear baselines by a wide margin without clean targets?
     evidence_artifacts:
       figures:
         - fig:representative_spectrum
@@ -69,93 +69,26 @@ subsections:
           - 7.6
           - 122
         delete_test: |
-          Without this paragraph, Results has no quantitative reconstruction headline; the reader reaches the downstream subsection with no magnitude anchor.
+          Without this paragraph, Results has no quantitative reconstruction headline.
       - paragraph_id: results-1-reconstruction-performance-on-the-test-spectra.p2
         section_id: results-1-reconstruction-performance-on-the-test-spectra
         reader_question: |
-          What does the ablation ladder isolate: that the gain needs the blindspot exclusion (central-visible collapses to the noisy scale) and not the scalar noise input (118 to 122), that the self-supervised 122 recovers most of the supervised ceiling of 154 without clean data, that even a clean-template PCA caps at 55.7 so the gain is not clean-data access, and that line preservation rules out oversmoothing?
+          What does the ablation ladder isolate before line-preservation is tested?
         role: scope_boundary
         claim_id: C1
         evidence_id: sec:results_denoising
         terms_introduced: []
         numbers_used: []
         delete_test: |
-          Without this paragraph, the reader cannot rule out tuned-classical-baseline and clean-template-PCA explanations.
-  - subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-    title: Downstream clean-trained calibrator transfer
+          Without this paragraph, the reader cannot rule out tuned-classical-baseline, clean-template-PCA, scalar-condition, or copy-shortcut explanations.
+  - subsection_id: results-2-line-preservation-diagnostics
+    title: Line-preservation diagnostics
     role: finding_update
     hero_claim_id: C2
     answers_question: |
-      Does an unmodified clean-trained surface-gravity calibrator read more label information from blindspot-denoised spectra than from noisy or smoothed inputs?
+      Does the reconstruction S/N gain preserve line structure, or could it be explained by simple smoothing or line filling?
     evidence_artifacts:
       figures:
-        - fig:downstream_clean_domain_transfer
-        - sec:results_downstream_logg
-      tables:
-        - tab:downstream_logg
-      numbers:
-        - 1.26
-        - 0.80
-    forbidden_content:
-      - setup
-      - motivation
-      - future_work
-      - row_by_row_table_readout
-    closing_role: scope_boundary
-    paragraphs:
-      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p1
-        section_id: results-2-downstream-clean-trained-calibrator-transfer
-        reader_question: |
-          Why does this matter beyond reconstruction error?
-        role: motivation
-        claim_id: C2
-        evidence_id: sec:results_downstream_logg
-        terms_introduced: []
-        numbers_used: []
-        delete_test: |
-          Without this paragraph, the reader does not see why a fixed downstream estimator is the right test of denoising usefulness.
-      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p2
-        section_id: results-2-downstream-clean-trained-calibrator-transfer
-        reader_question: |
-          What is the cross-label ordering and where do the smoothers fall?
-        role: finding_update
-        claim_id: C2
-        evidence_id: sec:results_downstream_logg
-        terms_introduced: []
-        numbers_used: []
-        delete_test: |
-          Without this paragraph, the figure is uninterpreted: four labels with no narrative ordering or smoother failure mode.
-      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p3
-        section_id: results-2-downstream-clean-trained-calibrator-transfer
-        reader_question: |
-          What does the log g audit show, and what carries the gain?
-        role: finding_update
-        claim_id: C2
-        evidence_id: sec:results_downstream_logg
-        terms_introduced: []
-        numbers_used: []
-        delete_test: |
-          Without this paragraph, the reader has no commitment of the downstream gain to line preservation rather than generic smoothing.
-      - paragraph_id: results-2-downstream-clean-trained-calibrator-transfer.p4
-        section_id: results-2-downstream-clean-trained-calibrator-transfer
-        reader_question: |
-          Is the result an artefact of the maximum calibrator-training-size operating point?
-        role: scope_boundary
-        claim_id: C2
-        evidence_id: sec:results_downstream_logg
-        terms_introduced: []
-        numbers_used: []
-        delete_test: |
-          Without this paragraph, the reader cannot rule out the train-size sensitivity alternative explanation.
-  - subsection_id: results-3-line-preservation-diagnostics
-    title: Line-preservation diagnostics
-    role: finding_update
-    hero_claim_id: C3
-    answers_question: |
-      Does the reconstruction S/N gain come with line preservation, or with continuum filling that would silently destroy stellar-analysis information?
-    evidence_artifacts:
-      figures:
-        - fig:caII_zoom
         - sec:results_physical
       tables:
         - tab:main_results
@@ -170,41 +103,73 @@ subsections:
       - motivation
       - future_work
       - row_by_row_table_readout
-    closing_role: scope_boundary
+    closing_role: bridge_to_downstream
     paragraphs:
-      - paragraph_id: results-3-line-preservation-diagnostics.p1
-        section_id: results-3-line-preservation-diagnostics
+      - paragraph_id: results-2-line-preservation-diagnostics.p1
+        section_id: results-2-line-preservation-diagnostics
         reader_question: |
           Why is a separate line-sensitive diagnostic necessary on top of aggregate S/N?
         role: motivation
-        claim_id: C3
+        claim_id: C2
         evidence_id: sec:results_physical
         terms_introduced: []
         numbers_used: []
         delete_test: |
           Without this paragraph, the reader has no reason to expect that aggregate S/N could be misleading and that line tests are needed.
-      - paragraph_id: results-3-line-preservation-diagnostics.p2
-        section_id: results-3-line-preservation-diagnostics
+      - paragraph_id: results-2-line-preservation-diagnostics.p2
+        section_id: results-2-line-preservation-diagnostics
         reader_question: |
           What do the Ca II, polarity, and O2 diagnostics jointly show?
         role: finding_update
-        claim_id: C3
+        claim_id: C2
         evidence_id: sec:results_physical
         terms_introduced: []
         numbers_used: []
         delete_test: |
-          Without this paragraph, the table has no narrative interpretation and the reader cannot exclude the single-line-accident or smoothing-artefact alternatives.
-      - paragraph_id: results-3-line-preservation-diagnostics.p3
-        section_id: results-3-line-preservation-diagnostics
+          Without this paragraph, the table has no narrative interpretation and the reader cannot exclude simple smoothing or line filling as the dominant explanation.
+  - subsection_id: results-3-downstream-clean-trained-calibrator-transfer
+    title: Downstream clean-trained calibrator transfer
+    role: finding_update
+    hero_claim_id: C3
+    answers_question: |
+      Does an unmodified clean-trained surface-gravity calibrator read more label information from blindspot-denoised spectra than from noisy or smoothed inputs?
+    evidence_artifacts:
+      figures:
+        - sec:results_downstream_logg
+      tables:
+        - tab:downstream_logg
+      numbers:
+        - 1.26
+        - 0.80
+    forbidden_content:
+      - setup
+      - motivation
+      - future_work
+      - row_by_row_table_readout
+    closing_role: scope_boundary
+    paragraphs:
+      - paragraph_id: results-3-downstream-clean-trained-calibrator-transfer.p1
+        section_id: results-3-downstream-clean-trained-calibrator-transfer
         reader_question: |
-          What is the mechanism behind the downstream gain, and what is the scope of all Results-section claims?
-        role: scope_boundary
+          Why does line-preserving reconstruction matter beyond reconstruction error?
+        role: motivation
         claim_id: C3
-        evidence_id: sec:results_physical
+        evidence_id: sec:results_downstream_logg
         terms_introduced: []
         numbers_used: []
         delete_test: |
-          Without this paragraph, Results ends without committing the mechanism (line preservation) or scoping the claims to the simulated independent-noise benchmark.
+          Without this paragraph, the reader does not see why a fixed downstream estimator is the right test of denoising usefulness.
+      - paragraph_id: results-3-downstream-clean-trained-calibrator-transfer.p2
+        section_id: results-3-downstream-clean-trained-calibrator-transfer
+        reader_question: |
+          What does the fixed log g estimator show, and what remains unrecovered?
+        role: finding_update
+        claim_id: C3
+        evidence_id: sec:results_downstream_logg
+        terms_introduced: []
+        numbers_used: []
+        delete_test: |
+          Without this paragraph, the reader has no interpretation of the fixed-calibrator table or its clean-reference boundary.
 display_plan:
   - display_id: sec:results_denoising
     kind: display
@@ -218,30 +183,22 @@ display_plan:
     kind: table
     subsection_id: results-1-reconstruction-performance-on-the-test-spectra
     function: ablation ladder - noisy input, classical and linear baselines, blindspot with and without the scalar noise condition, and a supervised clean-target ceiling
-  - display_id: sec:results_downstream_logg
-    kind: display
-    subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-    function: downstream-calibrator transfer subsection anchor
-  - display_id: fig:downstream_clean_domain_transfer
-    kind: figure
-    subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-    function: cross-label centred-scatter ratios + log g residual distribution on the held-out partition
-  - display_id: tab:downstream_logg
-    kind: table
-    subsection_id: results-2-downstream-clean-trained-calibrator-transfer
-    function: log g sigma_rob, MAE, bias, R^2 on five reconstruction inputs against the same fixed calibrator
   - display_id: sec:results_physical
     kind: display
-    subsection_id: results-3-line-preservation-diagnostics
+    subsection_id: results-2-line-preservation-diagnostics
     function: line-preservation diagnostics subsection anchor
   - display_id: tab:main_results
     kind: table
-    subsection_id: results-3-line-preservation-diagnostics
+    subsection_id: results-2-line-preservation-diagnostics
     function: per-line Ca II EW error, polarity flips, and O2 window diagnostics
-  - display_id: fig:caII_zoom
-    kind: figure
-    subsection_id: results-3-line-preservation-diagnostics
-    function: Ca II triplet morphology behind the equivalent-width table
+  - display_id: sec:results_downstream_logg
+    kind: display
+    subsection_id: results-3-downstream-clean-trained-calibrator-transfer
+    function: downstream-calibrator transfer subsection anchor
+  - display_id: tab:downstream_logg
+    kind: table
+    subsection_id: results-3-downstream-clean-trained-calibrator-transfer
+    function: log g sigma_rob, MAE, bias, R^2 on four reconstruction inputs against the same fixed calibrator
 forbidden_headlines:
   - training_loss
   - checkpoint_epoch
@@ -255,16 +212,16 @@ claim_chain:
     scope_limit: |
       Held-out reconstruction test split of 10,000 BOSZ/PFS-like late-type spectra at mag 20.5-22.5 with one independent zero-mean per-pixel noise realization each; clean-template PCA and supervised U-Net are non-deployable references with clean-data access.
   - claim_id: C2
-    evidence_id: sec:results_downstream_logg
-    rules_out: |
-      The downstream gain is not a generic smoothness consequence (validation-tuned box-car and Savitzky-Golay smoothers do not transfer for the log g audit) and is not a maximum-training-size operating-point artefact (Appendix sweep confirms ordering across n_train).
-    scope_limit: |
-      Disjoint 5,000-spectrum held-out test partition of the same scope-restricted BOSZ library, evaluated through a single LightGBM calibrator trained only on clean spectra; not a thresholded dwarf-giant classification metric.
-  - claim_id: C3
     evidence_id: sec:results_physical
     rules_out: |
-      The aggregate reconstruction-S/N gain is not delivered by continuum filling (Ca II EW errors fall by ~5x; polarity flips drop by ~100x; O2 window-restricted S/N rises rather than collapses).
+      The aggregate reconstruction-S/N gain is not explained by simple continuum filling (Ca II EW errors fall on all three triplet lines; polarity flips drop sharply; O2 window-restricted S/N rises rather than collapsing).
     scope_limit: |
       Continuum-normalized, medium-resolution, late-type BOSZ/PFS-like spectra at magnitude 20.5-22.5 under independent zero-mean per-pixel noise; line measurements use fixed EW windows and a continuum-relative polarity statistic, not absolute spectrophotometry.
+  - claim_id: C3
+    evidence_id: sec:results_downstream_logg
+    rules_out: |
+      The downstream gain is not a generic smoothness consequence under the fixed clean-trained log g estimator, because the validation-tuned Savitzky-Golay smoother remains closer to the noisy-input scale and the downstream appendix checks train-size sensitivity.
+    scope_limit: |
+      Disjoint 5,000-spectrum test partition of the same scope-restricted BOSZ library, evaluated through a LightGBM calibrator trained only on clean spectra and applied without refitting; not a thresholded dwarf-giant classification metric or full stellar-label recovery claim.
 residue_signature: |
-  After Results, the reader carries: a 16x reconstruction-S/N gain on a frozen low-S/N benchmark; the same gain reads through to a clean-trained log g calibrator that no smoother can reach; the absorption-line structure that the calibrator relies on is preserved rather than filled. All three findings are scoped to a continuum-normalized late-type BOSZ/PFS-like simulator with independent per-pixel noise.
+  After Results, the reader carries: a 16x reconstruction-S/N gain on the selected low-S/N test set; line-preservation diagnostics that argue against simple smoothing or line filling as the dominant explanation; and a fixed clean-trained log g transfer result that improves on noisy and smoothed inputs without reaching the clean-reference row. All three findings are scoped to a continuum-normalized late-type BOSZ/PFS-like simulator with independent per-pixel noise.
