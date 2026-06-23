@@ -708,25 +708,29 @@ Clean-template PCA reference & $k\in\{16,32,64,128\}$, clean-template fit & vali
 \end{tabular}
 \end{table}
 
-\paragraph{Reference-baseline reconstruction quality.}
-Table~\ref{tab:appendix_baselines} resolves the validation-selected baselines onto the same test split, augmenting the baseline rows of Table~\ref{tab:main_baselines} with median and bracket statistics and Ca\,\textsc{ii} EW error, so that the line-preservation and reconstruction columns are measured against the same baseline rows.
+\paragraph{Consolidated per-method results.}
+Reconstruction signal-to-noise rises with estimator capacity, but the downstream $\log g$ readout separates methods that preserve label information from those that only raise pixel S/N: the principal-component references reach the highest reconstruction S/N among the non-neural methods yet leave the calibrator no more accurate than the noisy input, whereas the blindspot moves the calibrator most of the way to the clean-input scale.
 
 \begin{table}[ht]
 \centering
-\small
-\caption{Validation-selected baseline denoisers on the test split. Mean and median S/N columns report linear-form per-spectrum aggregations of Equation~\ref{eq:snr_def}. The Ca\,\textsc{ii} column reports the across-spectra mean/median of the per-spectrum triplet equivalent-width relative error and is provided so that the line-preservation and reconstruction columns are scored against the same baseline rows. Table~\ref{tab:main_results} reports per-line medians for the noisy and blindspot rows and uses a different aggregation, so the two presentations are not numerically interchangeable but report consistent orderings.}
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\caption{Consolidated per-method results on the test split. Reconstruction columns give the mean and median per-spectrum S/N (Equation~\ref{eq:snr_def}) with the $5$--$95\%$ range. The Ca\,\textsc{ii} EW (across-spectra triplet mean/median) and polarity-flip columns are the line-preservation diagnostics for the non-neural baselines, scored under the same aggregation as one another. The $\log g$ columns give the clean-trained calibrator residual scatter $\sigma_{\rm rob}$ (dex; smaller is better) and $R^2$, evaluated without refitting (Section~\ref{sec:results_downstream_logg}). Clean reference, clean-template PCA, and the supervised U-Net use clean data and are non-deployable. Em-dashes mark quantities not defined for a row or not measured under the baseline aggregation; the blindspot per-line EW diagnostics with bootstrap intervals are in Table~\ref{tab:main_results}.}
 \label{tab:appendix_baselines}
-\begin{tabular}{lcccc}
+\begin{tabular}{lcccccc}
 \hline
-Reference & Mean S/N & Median S/N [5\%,95\%] & Ca\,\textsc{ii} EW error & Polarity flip \\
+Method & Mean S/N & Median S/N [$5$,$95$] & Ca\,\textsc{ii} EW & Polarity & $\log g\ \sigma_{\rm rob}$ & $\log g\ R^2$ \\
 \hline
-Noisy input & $7.6$ & $6.8$ [$3.1$,$14.6$] & $3.09/0.845$ & $0.282$ \\
-Savitzky--Golay & $20.8$ & $19.1$ [$9.7$,$38.2$] & $1.89/0.588$ & $0.121$ \\
-Gaussian smoothing & $25.8$ & $23.1$ [$13.2$,$47.5$] & $1.49/0.662$ & $0.0842$ \\
-Median filter & $15.7$ & $14.3$ [$6.7$,$29.1$] & $2.21/0.645$ & $0.168$ \\
-Wavelet BayesShrink & $26.6$ & $24.2$ [$13.4$,$48.3$] & $1.50/0.695$ & $0.0804$ \\
-Noisy-PCA, $k=16$ & $54.0$ & $51.0$ [$26.4$,$91.0$] & $1.09/0.338$ & $0.0184$ \\
-Clean-template PCA reference, $k=16$ & $55.7$ & $52.9$ [$27.1$,$93.0$] & $1.02/0.318$ & $0.0172$ \\
+Clean reference & --- & --- & --- & --- & $0.22$ & $0.94$ \\
+Noisy input & $7.6$ & $6.8$ [$3.1$,$14.6$] & $3.09/0.845$ & $0.282$ & $1.26$ & $0.01$ \\
+Savitzky--Golay & $20.8$ & $19.1$ [$9.7$,$38.2$] & $1.89/0.588$ & $0.121$ & $1.11$ & $0.10$ \\
+Gaussian smoothing & $25.8$ & $23.1$ [$13.2$,$47.5$] & $1.49/0.662$ & $0.0842$ & $1.16$ & $0.05$ \\
+Median filter & $15.7$ & $14.3$ [$6.7$,$29.1$] & $2.21/0.645$ & $0.168$ & $1.13$ & $0.04$ \\
+Wavelet BayesShrink & $26.6$ & $24.2$ [$13.4$,$48.3$] & $1.50/0.695$ & $0.0804$ & $1.01$ & $0.13$ \\
+Noisy-PCA, $k\!=\!16$ & $54.0$ & $51.0$ [$26.4$,$91.0$] & $1.09/0.338$ & $0.0184$ & $1.29$ & $-0.05$ \\
+Clean-template PCA, $k\!=\!16$ & $55.7$ & $52.9$ [$27.1$,$93.0$] & $1.02/0.318$ & $0.0172$ & $1.28$ & $-0.05$ \\
+\textbf{Blindspot (ours)} & $\mathbf{122}$ & $\mathbf{109}$ [$\mathbf{45}$,$\mathbf{246}$] & --- & --- & $\mathbf{0.80}$ & $\mathbf{0.46}$ \\
+Supervised U-Net & $154$ & $136$ [$55$,$319$] & --- & --- & --- & --- \\
 \hline
 \end{tabular}
 \end{table}
