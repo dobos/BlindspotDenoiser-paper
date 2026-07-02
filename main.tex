@@ -12,7 +12,7 @@
 
 \newcommand{\ld}[1]{\textcolor{red}{\textbf{#1}}}
 
-\newcommand{\m}[1]{\mathbf{#1}}
+\newcommand{\m}[1]{\boldsymbol{#1}}
 
 \newcounter{algorithm}
 \renewcommand{\thealgorithm}{\arabic{algorithm}}
@@ -199,40 +199,40 @@ The observation simulator outputs the wavelength grid, continuum-normalized clea
 where each term is normalized with the same continuum.
 The three terms encode noise from object photons, photon noise from the structured sky background, and detector read and dark noise as transfered by the telescope and the detector.
 
-We note, that in our simulations, $\sigma_{\mathrm{obj},\lambda}^2$ is a deterministic function of the clean flux $x$ which can have implications for the training of the blindspot denoiser when $\sigma_{\lambda}$ is used as input.
+We note, that in our simulations, $\m{\sigma}_{\mathrm{obj}}$ is a deterministic function of the clean flux $\m{x}$ which can have implications for the training of the blindspot denoiser when $\m{\sigma}$ is used as input.
 
 \subsection{Problem Formulation and Blindspot Objective}
 \label{sec:problem_formulation}
 
-Let $x\in\mathbb{R}^{N}$ be a clean spectrum and $y\in\mathbb{R}^{N}$ its noisy observation:
+Let $\m{x}\in\mathbb{R}^{N}$ be a clean spectrum and $\m{y}\in\mathbb{R}^{N}$ its noisy observation. In components, the noisy spectrum is
 \begin{align}
     y_{\lambda} &= x_{\lambda} + \epsilon_{\lambda} \\[1em]
     \epsilon_{\lambda} &\sim \mathcal{N}(0,\sigma_{\lambda}^{2}),
     \label{eq:noise_model_scalar}
 \end{align}
-where $\lambda = 1,2,\dots, N$ indexes the wavelength bins.
+where $\sigma_\lambda^2$ is the variance of the noise at wavelength bin $\lambda$ and $\lambda = 1,2,\dots, N$ indexes the wavelength bins.
 
-The task is to learn the $\theta$ parameters of a denoiser $f_\theta$ from noisy spectra only: during training, $y$ is used but $x$ is not. A blindspot predictor estimates each wavelength bin from its surrounding context with the center bin excluded:
+The task is to learn the $\m{\theta}$ parameters of a denoiser $f_{\m{\theta}}$ from noisy spectra only: during training, $\m{y}$ is used but $\m{x}$ is not. A blindspot predictor estimates each wavelength bin from its surrounding context with the center bin excluded:
 \begin{equation}
     \hat{x}_{\lambda} 
-        = f_{\theta}(y_{-\lambda},\sigma_{-\lambda}^2)
+        = f_{\m{\theta}}(\m{y}_{-\lambda},\m{\sigma}_{-\lambda})
 \end{equation}
-Here $y_{-\lambda}$ and $\sigma_{-\lambda}^2$ denote the receptive-field input after excluding $y_{\lambda}$ and $\sigma_{\lambda}^2$, whereas $\hat{x}_{\lambda}$ is the point estimate returned by the network, and $\theta$ denotes all trainable weights and biases of the denoiser.
+Here $\m{y}_{-\lambda}$ and $\m{\sigma}_{-\lambda}$ denote the receptive-field input after excluding $y_{\lambda}$ and $\sigma_{\lambda}$, whereas $\hat{x}_{\lambda}$ is the point estimate returned by the network, and $\m{\theta}$ denotes all trainable weights and biases of the denoiser.
 
-As we noted before, $\sigma_{\lambda}^2$ is a deterministic function of the clean flux $x$ in our simulations, so feeding the full vector $\{\sigma_{\lambda}\}_{\lambda=1}^{N}$ into the network would leak information about the clean flux into the prediction. To avoid this, we summarize the per-bin variances into a single scalar $\bar{\sigma}^2$ and use it as input to the network:
+As we noted before, $\sigma_{\lambda}$ is a deterministic function of the clean flux $x_\lambda$ in our simulations, so feeding the full vector $\m{\sigma}$ into the network would leak information about the clean flux into the prediction. To avoid this, we summarize the per-bin variances into a single scalar $\bar{\sigma}$ and use it as input to the network:
 \begin{align}
     \hat{x}_{\lambda} 
-        &= f_{\theta}(y_{-\lambda},\bar{\sigma}^2)
+        &= f_{\m{\theta}}(\m{y}_{-\lambda},\bar{\sigma})
         \label{eq:blindspot_prediction} \\
     \bar{\sigma}^2
         &= \frac{1}{N}\sum_{\lambda=1}^{N}\sigma_{\lambda}^{2}.
 \end{align}
 
-The scalar $\bar{\sigma}^2$ represents the overall noise level of the spectrum and $\bar{\sigma}$ has the same unit of flux as $y$. We use the sum of the per-bin variances rather than the full vector $\{\sigma_{\lambda}^2\}_{\lambda=1}^{N}$ because the full vector contains wavelength-specific information from the noiseless simulated spectrum that could cause data leakage. Hence the full, pixel-wise variance vector is used only to draw $\epsilon_{\lambda}$ in Equation~\ref{eq:noise_model_scalar} and the network receives only the scalar noise summary $\bar{\sigma}$, as defined in Equation~\ref{eq:blindspot_prediction}. The clean reference $x$ is completely withheld during training and used only for evaluation.
+The scalar $\bar{\sigma}$ represents the overall noise level of the spectrum and $\bar{\sigma}$ has the same unit of flux as $y_{\lambda}$. We use the sum of the per-bin variances rather than the full vector $\m{\sigma}$ because the full vector contains wavelength-specific information from the noiseless simulated spectrum that could cause data leakage. Hence the full, pixel-wise variance vector is used only to draw $\epsilon_{\lambda}$ in Equation~\ref{eq:noise_model_scalar} and the network receives only the scalar noise summary $\bar{\sigma}$, as defined in Equation~\ref{eq:blindspot_prediction}. The clean reference $\m{x}$ is completely withheld during training and used only for evaluation.
 
 We train the network with a noisy-target Huber loss in the form of
 \begin{align}
-    \mathcal{L}(\theta;y)
+    \mathcal{L}(\m{\theta};\m{y})
     &= \frac{1}{N}\sum_{\lambda=1}^{N}
         \ell_{\delta}\!\left(y_{\lambda} - \hat{x}_{\lambda}\right) \\[1em]
     \ell_{\delta}(r) &=
@@ -246,20 +246,20 @@ The Huber loss behaves as squared-error regression for residuals with $|r|\leq\d
 
 The optimization problem can be written as
 \begin{equation}
-    \theta^\ast = \operatorname*{arg\,min}_{\theta}\;\mathbb{E}_{y}\!\left[\mathcal{L}(\theta;y)\right],
+    \m{\theta}^\ast = \operatorname*{arg\,min}_{\m{\theta}}\;\mathbb{E}_{y}\!\left[\mathcal{L}(\m{\theta};\m{y})\right],
     \label{eq:theta_star}
 \end{equation}
-where the expectation value is taken over the ensemble of noisy spectra. The denoised spectrum is obtained by evaluating Equation~\ref{eq:blindspot_prediction} at $\theta^\ast$.
+where the expectation value is taken over the ensemble of noisy spectra. The denoised spectrum is obtained by evaluating Equation~\ref{eq:blindspot_prediction} at $\m{\theta}^\ast$.
 
 Note, that neither clean fluxes, nor per-pixel inverse-variance weights enter the training loss. The pixelwise variance vector is compressed into the scalar $\bar{\sigma}$ before it is supplied to the network and it is not used at all in the loss function.
 
 Under the symmetric zero-mean per-pixel noise model of Equation~\ref{eq:noise_model_scalar}, and for a Huber breakpoint $\delta$ chosen to be large relative to the typical residuals, the population minimizer is approximately
 \begin{equation}
-    f^\ast(y_{-\lambda},\bar{\sigma}^2)
+    f^\ast(\m{y}_{-\lambda},\bar{\sigma})
     \approx
-    \mathbb{E}\!\left[y_{\lambda}\mid y_{-\lambda},\bar{\sigma}^2\right]
+    \mathbb{E}\!\left[y_{\lambda}\mid \m{y}_{-\lambda},\bar{\sigma}\right]
     =
-    \mathbb{E}\!\left[x_{\lambda}\mid y_{-\lambda},\bar{\sigma}^2\right].
+    \mathbb{E}\!\left[x_{\lambda}\mid \m{y}_{-\lambda},\bar{\sigma}\right].
     \label{eq:population_target}
 \end{equation}
 The equality follows because the noise has zero conditional mean. Asymmetric or heavy-tailed noise, or a $\delta$ comparable to or smaller than the typical magnitude of the residuals, would shift the optimum toward an outlier-attenuated conditional location rather than the conditional mean.
@@ -268,29 +268,47 @@ The equality follows because the noise has zero conditional mean. Asymmetric or 
 \label{sec:blindspot_algorithm}
 
 A blindspot neural network can follow any feed-forward architecture 
-as long as the forward pass ensures one invariant: the feature used to predict the flux in bin $\lambda$ is never computed from $y_{\lambda}$. When feature extraction from the input is done with a convolutional network, this property is often referred to as \textit{causality}. To compute some internal features that will be used downstream to predict $\hat{x}_{\lambda}$, the one-dimensional blindspot network uses two identical, but mirrored causal branches. The left branch calculates the feature vector $\m{u}_{\lambda}^{L} = U_{\theta}(\m{z}^{L})$, where $\m{z}^{L}$ is the input spectrum in the normal order of wavelength bins for all $\lambda_i < \lambda$, so the extracted features at $\lambda$ depend only on $y_{<\lambda}$. The right branch processes the wavelength-reversed spectrum for all $\lambda_i > \lambda$ and calculates $\m{u}_{\lambda}^{R} = U_{\theta}(\m{z}^{R})$, so the right-side features at $\lambda$ depend only on $y_{>\lambda}$. The prediction head, that calculates $\hat{x}_{\lambda}$, receives only the $\m{u}_{\lambda}^{L}$ and $\m{u}_{\lambda}^{R}$ feature vector, therefore, no computational path carries $y_{\lambda}$ into $\hat{x}_{\lambda}$.
+as long as the forward pass ensures one invariant: the feature used to predict the flux in bin $\lambda$ is never computed from $y_{\lambda}$. When feature extraction from the input is done with a convolutional network, this property is often referred to as \textit{causality}. To compute some internal features that will be used downstream to predict $\hat{x}_{\lambda}$, the one-dimensional blindspot network uses two identical, but mirrored causal branches. The left branch calculates the feature vector $\m{u}_{\lambda}^{L} = U_{\m{\theta}}(\m{z}^{L})$, where $\m{z}^{L} = \m{y}_{<\lambda}$ is the input spectrum in the normal order of wavelength bins for all $\lambda_i < \lambda$, so the extracted features at $\lambda$ depend only on $\m{y}_{<\lambda}$. The right branch processes the wavelength-reversed spectrum for all $\lambda_i > \lambda$ and calculates $\m{u}_{\lambda}^{R} = U_{\m{\theta}}(\m{z}^{R})$, so the right-side features at $\lambda$ depend only on $\m{y}_{>\lambda}$. The prediction head, that calculates $\hat{x}_{\lambda}$, receives only the $\m{u}^{L}$ and $\m{u}^{R}$ feature vectors, therefore, no computational path carries $y_{\lambda}$ into $\hat{x}_{\lambda}$.
 
 \begin{figure}
     \begin{center}
     \includegraphics{figs/network.pdf}
     \label{fig:network}
-    \caption{Illustration of the blindspot network architecture for the prediction of a single spectrum pixel $\hat{x}_{\lambda}$. The two UNet blocks of $U_{\theta}$ are identical with the same weights but their receptive fields are only $y_{<\lambda}$ and $y_{>\lambda}$, respectively and $y_{\lambda}$ is excluded from both. The left block processes the input spectrum in increasing wavelength order, while the input of the right block is reversed in wavelength order. The two feature vectors $u_{\lambda}^{L}$ and $u_{\lambda}^{R}$ are concatenated and passed to the pointwise head $g_{\theta}$ to predict $\hat{x}_{\lambda}$.}
+    \caption{Illustration of the blindspot network architecture for the prediction of a single spectrum pixel $\hat{x}_{\lambda}$. The two UNet blocks of $U_{\theta}$ are identical with the same weights but their receptive fields are only $\m{y}_{<\lambda}$ and $\m{y}_{>\lambda}$, respectively and $y_{\lambda}$ is excluded from both. The left block processes the input spectrum in increasing wavelength order, while the input of the right block is reversed in wavelength order. The two feature vectors $\m{u}^{L}$ and $\m{u}^{R}$ are concatenated and passed to the pointwise head $g_{\theta}$ to predict $\hat{x}_{\lambda}$.}
     \end{center}
 \end{figure}
 
-The input to the blindspot network is a 1-dimensional array $y\in\mathbb{R}^{N}$ or the stacked array $\{y_\lambda, \sigma_\lambda\}_{\lambda=1}^{N} \in\mathbb{R}^{2 \times N}$ representing the continuum-normalized flux and the pixel-wise variance, ordered by wavelength. To select a specific $\lambda$ for which the prediction is made, the input is padded so that the receptive field of the network covers only $y_{<\lambda}$ and $y_{>\lambda}$, but not $y_{\lambda}$. The output of the network is $\hat{x}_\lambda$. The architecture is illustrated in Figure~\ref{fig:network}. When two separate channels for the flux and the variance are used, two feature vectors are created by $U_{\theta}$, and both are fed into the pointwise head $g_{\theta}$ to predict $\hat{x}_{\lambda}$.
+The input to the blindspot network is a 1-dimensional array $\m{y}\in\mathbb{R}^{N}$ or the stacked array $\{y_\lambda, \sigma_\lambda\}_{\lambda=1}^{N} \in\mathbb{R}^{2 \times N}$ representing the continuum-normalized flux and the pixel-wise variance, ordered by wavelength. To select a specific $\lambda$ for which the prediction is made, the input is padded so that the receptive field of the network covers only $\m{y}_{<\lambda}$ and $\m{y}_{>\lambda}$, but not $y_{\lambda}$. The output of the network is $\hat{x}_\lambda$. The architecture is illustrated in Figure~\ref{fig:network}. When two separate channels for the flux and the variance are used, two feature vectors are created by $U_{\m{\theta}}$, and both are fed into the pointwise head $g_{\m{\theta}}$ to predict $\hat{x}_{\lambda}$.
 
 In case of simulated spectra, to avoid data leakage, the pixel-wise variance vector $\{\sigma_\lambda\}_{\lambda=1}^{N}$ is substituted with the constant vector $\bar{\sigma}$, which is the mean of the pixel-wise variance vector.
 
 The blindspot network is evaluated in the following steps:
 \begin{enumerate}
-    \item Route the noisy spectrum $y$ and $\bar{\sigma}$ in the two wavelength directions: $z^{L}\leftarrow y$ and $z^{R}\leftarrow\mathrm{rev}(y)$.
-    \item Apply the same $U_{\theta}$ to each branch shifted to the wavelength of interest:
-    $u^{L}\leftarrow U_{\theta}(z^{L})$, $\tilde{u}^{R}\leftarrow U_{\theta}(z^{R})$.
+    \item Route the noisy spectrum $\m{y}$ and $\bar{\m{\sigma}}$ in the two wavelength directions:
+        \begin{equation*}
+            \m{z}^{L}\leftarrow \{\m{y}, \bar{\m{\sigma}}\}
+            \quad \text{and} \quad
+            \m{z}^{R}\leftarrow \{\mathrm{rev}(\m{y}), \bar{\m{\sigma}}\}
+        \end{equation*}
+    \item Apply the same $U_{\m{\theta}}$ to each branch shifted to the wavelength of interest:
+        \begin{equation*}
+            \m{u}^{L}\leftarrow U_{\m{\theta}}(\m{z}^{L}),
+            \quad
+            \tilde{\m{u}}^{R}\leftarrow U_{\m{\theta}}(\m{z}^{R})
+        \end{equation*}
     \item Restore the right-branch features to the original wavelength order:
-    $u^{R}\leftarrow\mathrm{rev}(\tilde{u}^{R})$, so $u^{L}_{\lambda}$ sees $y_{<\lambda}$ and $u^{R}_{\lambda}$ sees $y_{>\lambda}$.
-    \item Concatenate the two blindspot features and predict each bin:
-    $h_{\lambda}\leftarrow[u^{L}_{\lambda},u^{R}_{\lambda}]$, $\hat{x}_{\lambda}\leftarrow g_{\theta}(h_{\lambda})$.
+        \begin{equation*}
+            \m{u}^{R}\leftarrow\mathrm{rev}(\tilde{\m{u}}^{R}),
+        \end{equation*}
+        so $\m{u}^{L}_{\lambda}$ sees $\m{y}_{<\lambda}$ and $\m{u}^{R}_{\lambda}$ sees $\m{y}_{>\lambda}$.
+    \item Concatenate the two feature vectors:
+        \begin{equation*}
+            \m{h} \leftarrow [\m{u}^{L},\m{u}^{R}]
+        \end{equation*}
+    \item Predict the denoised flux at each wavelength bin:
+        \begin{equation*}
+            \hat{x}_{\lambda}\leftarrow g_{\theta}(\m{h})
+        \end{equation*}
 \end{enumerate}
 
 % \begin{algorithmblock}{Blindspot feature construction for one-dimensional spectra}
@@ -315,17 +333,17 @@ Throughout this section we work under the heteroscedastic Poisson--Gaussian nois
 
 \paragraph{Blindspot exclusion prevents the identity shortcut}
 If the center pixel was visible, the noisy-target objective would have a zero-loss copy solution:
-\[
-\hat{x}_{\lambda}=y_{\lambda}
-\quad\Longrightarrow\quad
-\mathcal{L}(\theta;y)
-= \frac{1}{L}\sum_{\lambda=1}^{L}
-    \ell_{\delta}\!\left(y_{\lambda}-y_{\lambda}\right)
-=0.
-\]
+\begin{equation}
+    \hat{x}_{\lambda}=y_{\lambda}
+    \quad\Longrightarrow\quad
+    \mathcal{L}(\m{\theta};\m{y})
+    = \frac{1}{L}\sum_{\lambda=1}^{L}
+        \ell_{\delta}\!\left(y_{\lambda}-y_{\lambda}\right)
+    =0.
+\end{equation}
 This solution contains no information about $x_{\lambda}$. The blindspot construction eliminates this problem by explicitly excluding $y_{\lambda}$ from the receptive field of the network.
 
-\paragraph{Identifiability follows from zero-mean noise} Let $\Omega_{\lambda} = (y_{-\lambda},\bar{\sigma})$ denote the blindspot context. Identifiability follows from
+\paragraph{Identifiability follows from zero-mean noise} Let $\Omega_{\lambda} = (\m{y}_{-\lambda},\bar{\sigma})$ denote the blindspot context. Identifiability follows from
 \begin{align}
     y_{\lambda} = x_{\lambda} + \epsilon_{\lambda} \\[1em]
     \mathbb{E}\!\left[\epsilon_{\lambda} \mid x_{\lambda},\Omega_{\lambda}\right] = 0,
@@ -357,21 +375,26 @@ With these, we define the ratio
 A small $\gamma_\lambda$ means the context predicts the clean flux more accurately than the noisy center observation itself, so the real flux at the hidden wavelength is recoverable in the sense needed for blindspot denoising. \ld{???: In this heteroscedastic simulator, $\gamma$ is a spectrum-level recoverability summary whose per-pixel interpretation is recorded in Appendix~\ref{app:gamma_heteroscedasticity}.}
 
 \paragraph{Heteroscedasticity and the scalar $\gamma$} \ld{Something is wrong here cause $\gamma$ is clearly not a scalar but depends on $\lambda$}
-The observation simulator outputs the $\sigma_{\lambda}^{2}$ per-pixel variances, see Eq.~\ref{eq:noise_components}, while the network receives the spectrum-level scalar $\bar{\sigma}^{2}=N^{-1}\sum_{\lambda}\sigma_{\lambda}^{2}$. The scalar $\gamma$ in Equation~\ref{eq:gamma} therefore describes spectrum-averaged recoverability under the same averaging used for conditioning. Wavelength windows whose local variance profile differs strongly from $\bar{\sigma}^{2}$, such as the \mbox{O$_2$} A-band, require direct window diagnostics. We will evaluate those windows in Section~\ref{sec:results_physical} instead of treating the scalar $\gamma$ as a local guarantee.
+The observation simulator outputs the $\sigma_{\lambda}^{2}$ per-pixel variances, see Eq.~\ref{eq:noise_components}, while the network receives the spectrum-level scalar $\bar{\sigma}^{2}=N^{-1}\sum_{\lambda}\sigma_{\lambda}^{2}$. \ld{??? The scalar $\gamma$ in Equation~\ref{eq:gamma}} therefore describes spectrum-averaged recoverability under the same averaging used for conditioning. Wavelength windows whose local variance profile differs strongly from $\bar{\sigma}^{2}$, such as the \mbox{O$_2$} A-band, require direct window diagnostics. We will evaluate those windows in Section~\ref{sec:results_physical} instead of treating the scalar $\gamma$ as a local guarantee.
 
-\paragraph{The target support has a physically set correlation scale}
-The reason to expect small $\gamma_\lambda$ is not generic smoothness, but the ratio between the spectral correlation length and the variance of the noise. \ld{Why?} The spectral correlation length is determined jointly by stellar physics via intrinsic line width and by the instrument via the line-spread function.
+\subsection{The size of the target support}
+
+The target support has a physically set correlation scale. The reason to expect small $\gamma_\lambda$ is not generic smoothness, but the ratio between the spectral correlation length and the variance of the noise. \ld{Why?} The spectral correlation length is determined jointly by stellar physics via intrinsic line width and by the instrument via the line-spread function.
 
 %Neighboring bins can therefore predict the flux in a withheld bin only when the astrophysical and instrumental line widths are sampled by enough pixels.
 In case of typical medium-resolution stellar spectra, the wavelength resolution is designed to sample the line-spread function with at least two pixels per FWHM, and the astrophysical line widths are usually broader than the instrumental width. The combination of these two effects ensures that neighboring bins carry enough information about the flux in a withheld bin, which is the basis for the blindspot denoising approach.
 \ld{??? We verify this S/N range directly on clean BOSZ test spectra: simple local predictors leave residual variance below about $10^{-3}$ of the injected per-pixel noise variance in the conservative $95$th-percentile summary, with the full per-estimator measurement table given in Appendix~\ref{app:controls_gamma}.}
-Spectra with different surface gravity distributions, or a different line-spread function should be checked separately rather than assumed to share the same small-$\gamma$ range. We therefore use the small-$\gamma$ argument as a range statement for this simulated data set, not as an unconditional guarantee beyond it.
+Spectra with different surface gravity distributions, or a different line-spread function should be verified separately rather than assumed to share the same small-$\gamma$ range. We therefore use the small-$\gamma$ argument as a range statement for this simulated data set, not as an unconditional guarantee beyond it.
 
-\paragraph{From pixel recoverability to non-linear downstream tasks}
-The recoverability ratio in Equation~\ref{eq:gamma} concerns pixel-level reconstruction. Downstream tasks, such as surface gravity measurement, see Section~\ref{sec:results_downstream_logg}, are non-linear functionals of the full spectrum and are not directly bounded by $\gamma$. Hence, we make the weaker claim that a blindspot denoiser can recover the line-shape statistics well enough so that a downstream non-linear regressor, trained solely on clean spectra, can make use of the denoised spectra without retraining.
+\subsection{Parameter estimation from denoised spectra}
+
+% \paragraph{From pixel recoverability to non-linear downstream tasks}
+The recoverability ratio in Equation~\ref{eq:gamma} concerns pixel-level reconstruction. Downstream tasks, such as surface gravity measurement, see Section~\ref{sec:results_downstream_logg}, are non-linear functionals of the full spectrum and are not directly bounded by $\gamma$. Hence, we make the weaker claim that a blindspot denoiser can recover the line shape well enough so that a downstream non-linear regressor, trained solely on clean spectra and known labels, can make use of the denoised spectra without retraining.
 %We make the weaker structural claim that a blindspot denoiser whose error is dominated by recoverable local residuals can preserve the line-shape statistics that a clean-trained nonlinear regressor reads, including line position, depth, and width, to leading order in the per-pixel residual.
-This is consistent with the calibration transfer reported below, where a LightGBM gravity regressor trained on clean spectra and evaluated without refitting is used to predict $\log g$ from the noisy and the denoised spectra. The blindspot denoiser raised the coefficient of determination from $R^{2}\approx0.01$ to $R^{2}\approx0.46$ and removed most of the noisy-input systematic bias. As a contrast, results from using simple pixel-domain smoothers remain close to the noisy-input value.
-Calculating a formal information-channel bound for this propagation is left for future work. The present paper treats the calibration result as empirical confirmation of the line-preservation diagnostics in Section~\ref{sec:results_physical}.
+
+This is consistent with the \ld{??? calibration transfer} results in Section~\ref{sec:results_downstream_logg}, where we are going to demonstrate that the denoised spectra can be used to improve $\log g$ estimation from noisy specra based on classical machine learning regression trained on clean spectra. Calculating a formal information channel bound for this propagation is left for future work. The present paper treats the calibration result as empirical confirmation of line preservation results in Section~\ref{sec:results_physical}.
+
+%, where a LightGBM gravity regressor trained on clean spectra and evaluated without refitting is used to predict $\log g$ from the noisy and the denoised spectra. The blindspot denoiser raised the coefficient of determination from $R^{2}\approx0.01$ to $R^{2}\approx0.46$ and removed most of the noisy-input systematic bias. As a contrast, results from using simple pixel-domain smoothers remain close to the noisy-input value.
 
 \section{Implementation}
 \label{sec:implementation}
