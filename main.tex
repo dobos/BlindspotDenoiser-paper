@@ -394,33 +394,45 @@ The recoverability ratio in Equation~\ref{eq:gamma} concerns pixel-level reconst
 %We make the weaker structural claim that a blindspot denoiser whose error is dominated by recoverable local residuals can preserve the line-shape statistics that a clean-trained nonlinear regressor reads, including line position, depth, and width, to leading order in the per-pixel residual.
 
 This is consistent with the \ld{??? calibration transfer} results in Section~\ref{sec:results_downstream_logg}, where we are going to demonstrate that the denoised spectra can be used to improve $\log g$ estimation from noisy specra based on classical machine learning regression trained on clean spectra. Calculating a formal information channel bound for this propagation is left for future work. The present paper treats the calibration result as empirical confirmation of line preservation results in Section~\ref{sec:results_physical}.
-
+%
 %, where a LightGBM gravity regressor trained on clean spectra and evaluated without refitting is used to predict $\log g$ from the noisy and the denoised spectra. The blindspot denoiser raised the coefficient of determination from $R^{2}\approx0.01$ to $R^{2}\approx0.46$ and removed most of the noisy-input systematic bias. As a contrast, results from using simple pixel-domain smoothers remain close to the noisy-input value.
-
-\section{Implementation}
-\label{sec:implementation}
+%
+% \section{Implementation}
+% \label{sec:implementation}
 % sec:data_noise retained as legacy alias for cross-references in Appendix and earlier drafts.
 % \label{sec:data_noise}
 
 \subsection{Training}
-We instantiate the feature construction in Algorithm~\ref{alg:blindspot_forward} with a one-dimensional U-Net, scalar noise-level conditioning through $\bar{\sigma}$, and a single-head $\hat{x}$ output. The training protocol is summarized in Protocol~\ref{prot:blindspot_training}; no clean reference enters the optimization.
+The denoiser network we trained consisted of a single U-Net backbone $U_{\m{\theta}}$ with four input channels for feature extraction and and a prediction head of \ld{densely connected layers}. The backbone had 9 convolutional layers with a kernel size of $25$ and a total number of 48 kernels. The four input channels were the left and right shifted causal branches with proper padding and the two channels of constant vectors filled with the scalar noise parameter $\bar{\sigma}$. The U-Net backbone had an output of 2 times 48 channels, the $\m{u}^{L}$ and $\m{u}^{R}$ feature vectors, which were concatenated into a single channel by the prediction head. In the U-Net backbone, we used batch normalization and residual aggregation between matching encoder and decoder levels. The prediction head $g_{\m{\theta}}$ consisted of 3 convolutional layers with kernel size of $1$ to mix down the U-Net output to a single channel that predicts the denoised flux $\hat{x}$. The U-Net backbone used ReLU activation functions.
 
-\begin{protocolblock}{Training protocol for the reported blindspot model}
-\label{prot:blindspot_training}
-\noindent\algkey{Input:} noisy training spectra $\{y^{(j)}\}_{j=1}^{N}$, simulator variances $\{(\sigma_{\lambda}^{(j)})^{2}\}$, and the blindspot model of Algorithm~\ref{alg:blindspot_forward}.
+The networks was trained with the Huber loss of Eq.~\ref{eq:self_supervised_loss} with \ld{$\delta=0.1$}. Optimization was done using an Adam optimizer with $(\beta_1,\beta_2,\epsilon)=(0.9,0.999,10^{-8})$ and zero weight decay, initial learning rate $10^{-4}$, and a cosine schedule decaying to $10^{-6}$ over the full training horizon. Training used a maximum of $200$ epochs with a batch size of $128$ and a single fixed training seed. The early-stopping patience was set to $30$ epochs and the model with the smallest Huber loss on the validation set was chosen as the best-fit model, before any test set evaluation. At each training step, $85\%$ of wavelength bins were sampled at random and contributed to the loss function, while the remaining bins were held out. This stochastic masking is the standard for training blindspot networks in order to decorrelate the predictions for successive wavelength bins. During test set evaluation, the full spectra were used to calculate the Huber loss. We note, that while the Huber loss was used for training the network, we report the RMSE of the denoised spectra in the results section, which is a more standard metric for the reconstruction error.
+
+The detailed training procedure was as follows:
 \begin{enumerate}
-    \item Compute the scalar noise condition for each spectrum:
-    $\bar{\sigma}^{(j)}=\sqrt{L^{-1}\sum_{\lambda}(\sigma_{\lambda}^{(j)})^{2}}$; the pixelwise $\sigma_{\lambda}^{(j)}$ profile is not provided to the network.
-    \item Predict all wavelength bins with the blindspot forward pass:
-    $\hat{x}_{\lambda}^{(j)}=f_{\theta}(y_{-\lambda}^{(j)},\bar{\sigma}^{(j)})$.
-    \item Update $\theta$ against the noisy target by minimizing
-    $L^{-1}\sum_{\lambda}\ell_{\delta}(y_{\lambda}^{(j)}-\hat{x}_{\lambda}^{(j)})$ over mini-batches and epochs.
-    \item Freeze the trained model after optimization.
+    \item For each epoch and each mini-batch of noisy spectra, calculate the scalar noise parameter
+        \begin{equation*}
+            \left( \bar{\sigma}^{(j)} \right)^2 = L^{-1}\sum_{\lambda} \left( \sigma_{\lambda}^{(j)} \right)^{2}.
+        \end{equation*}
+        A constant vector $\bar{\m{\sigma}}^{(j)}$ formed from this value is used as the second input channel to the network.
+    \item Calculate the prediction for each wavelength bin with a blindspot forward pass:
+        \begin{equation*}
+            \hat{x}_{\lambda}^{(j)} = f_{\theta}(\m{y}_{-\lambda}^{(j)},\bar{\m{\sigma}}^{(j)}).
+        \end{equation*}
+    \item Generate a random mask of $85\%$ of the wavelength bins and calculate the Huber loss of Equation~\ref{eq:self_supervised_loss} only for the masked bins.
+    \item For each mini-batch, calculate the gradient and update the network parameters $\theta$ with the Adam optimizer.
+    \item After each epoch, evaluate the Huber loss on the validation set and save the model if it is the best so far.
+    \item Repeat until early stopping criteria are met or a maximum number of epochs is reached.
 \end{enumerate}
-\noindent\algkey{Output:} trained model $f_{\theta^\ast}$ and predictions $\hat{x}_{\lambda}=f_{\theta^\ast}(y_{-\lambda},\bar{\sigma})$.
-\end{protocolblock}
 
-\subsection{Performance Evaluation Metrics}
+\subsection{Metrics for Performance Evaluation}
+
+We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the \mbox{O$_2$} A-band. The first metric is a standard measure of reconstruction quality, while the latter two are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
+
+\ld{review: Aggregate reconstruction results are computed after this per-spectrum quantity has been evaluated for each test spectrum.}
+
+*****
+
+We aggregate these metrics over the test set of simulated spectra and report the mean and $95\%$ confidence intervals. The confidence intervals are calculated using the bootstrap method with $1000$ resamples of the test set.
 
 \ld{??? All metrics reported in Section~\ref{sec:results} use one validation-selected model and one metric definition per column. Per-spectrum metrics are averaged across spectra within each test-set noise realization and then across realizations; reported $\pm$ values are $95\%$ confidence intervals over the realizations in Table~\ref{tab:data_summary}.}
 
@@ -431,7 +443,6 @@ We instantiate the feature construction in Algorithm~\ref{alg:blindspot_forward}
     \frac{\lVert \m{x} - \m{z} \rVert_{2}}{\sqrt{N}}.
     \label{eq:rmse_def}
 \end{equation}
-\ld{review: Aggregate reconstruction results are computed after this per-spectrum quantity has been evaluated for each test spectrum.}
 
 \paragraph{Equivalent width} Since we work with continuum-normalized synthetic spectra, the definition of absorption-line equivalent width (EW) is simply
 \begin{equation}
@@ -668,8 +679,8 @@ A dependency manifest and a container recipe are pinned in the archived release,
 
 This appendix is specific to the blindspot model and is not part of the model-agnostic evaluation contract of Appendix~\ref{app:contract}. It records the canonical model architecture and training configuration that produce the test-set reconstruction in Section~\ref{sec:results_denoising} and the numerical blindspot integrity audit that rules out leakage of $y_{\lambda}$ into $\hat{x}_{\lambda}$ in the reported network, in support of Section~\ref{sec:blindspot_algorithm} and the central-pixel exclusion claim in Section~\ref{sec:results_denoising}.
 
-\paragraph{Canonical model and training configuration.}
-The denoiser is a one-dimensional convolutional U-Net (Table~\ref{tab:training_config}) that maps a single-channel noisy spectrum, concatenated with the broadcast scalar $\bar{\sigma}$ as a second input channel, to a single-channel reconstruction $\hat{x}$. The backbone uses nine convolutional layers with width $48$ and kernel size $25$, batch normalization, and residual aggregation between matching encoder and decoder levels; the output is a single-head $\hat{x}$ point estimate, with no auxiliary $\sigma$ output head and no probabilistic output branch. The blindspot property is enforced by combining shifted causal convolutions on each side of the spectrum, as described in Section~\ref{sec:blindspot_algorithm}. Optimization uses Adam with $(\beta_1,\beta_2,\epsilon)=(0.9,0.999,10^{-8})$ and zero weight decay, initial learning rate $10^{-4}$, and a cosine schedule decaying to $10^{-6}$ over the full training horizon. Training uses $200$ epochs, batch size $128$, and a single fixed training seed; the early-stopping patience is $30$ epochs and the reported model is selected as the validation-best by reconstruction RMSE before any test-set evaluation. At each training step, $85\%$ of wavelength bins are sampled at random and contribute to the noisy-target loss, while the remaining bins are held out from the loss for that step; this stochastic loss-mask is the standard blindspot-training mechanism for decorrelating successive predicted bins and does not modify the network input or the test-set evaluation, which is computed at every wavelength.
+% \paragraph{Canonical model and training configuration.}
+% The denoiser is a one-dimensional convolutional U-Net (Table~\ref{tab:training_config}) that maps a single-channel noisy spectrum, concatenated with the broadcast scalar $\bar{\sigma}$ as a second input channel, to a single-channel reconstruction $\hat{x}$. The backbone uses nine convolutional layers with width $48$ and kernel size $25$, batch normalization, and residual aggregation between matching encoder and decoder levels; the output is a single-head $\hat{x}$ point estimate, with no auxiliary $\sigma$ output head and no probabilistic output branch. The blindspot property is enforced by combining shifted causal convolutions on each side of the spectrum, as described in Section~\ref{sec:blindspot_algorithm}. Optimization uses Adam with $(\beta_1,\beta_2,\epsilon)=(0.9,0.999,10^{-8})$ and zero weight decay, initial learning rate $10^{-4}$, and a cosine schedule decaying to $10^{-6}$ over the full training horizon. Training uses $200$ epochs, batch size $128$, and a single fixed training seed; the early-stopping patience is $30$ epochs and the reported model is selected as the validation-best by reconstruction RMSE before any test-set evaluation. At each training step, $85\%$ of wavelength bins are sampled at random and contribute to the noisy-target loss, while the remaining bins are held out from the loss for that step; this stochastic loss-mask is the standard blindspot-training mechanism for decorrelating successive predicted bins and does not modify the network input or the test-set evaluation, which is computed at every wavelength.
 
 % ROLE: reproducibility record for the reported model checkpoint and training configuration.
 \begin{table}[ht]
