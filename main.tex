@@ -424,6 +424,8 @@ The detailed training procedure was as follows:
     \item Repeat until early stopping criteria are met or a maximum number of epochs is reached.
 \end{enumerate}
 
+We trained the blindspot denoiser in two configurations: one with a single-channel input for the noisy flux only, and one with a two-channel input for the noisy flux and the constant $\bar{\sigma}$ vector which is just a summary of the per-pixel variance vector.
+
 \subsection{Metrics for Performance Evaluation}
 
 We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the \mbox{O$_2$} A-band. The first metric is a standard measure of reconstruction quality, while the latter two are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
@@ -485,13 +487,16 @@ The absorption features we tested are the following.
 \item O$_2$~A-band: We measure the total equivalent width of absorption features overlapping with the telluric O$_2$~A-band, which is a strong atmospheric absorption feature in the wavelength range $7590$--$7700$~\AA. In this wavelength interval, sky-background and atmospheric-throughput dominate the noise budget. The diagnostic therefore tests whether the blindspot model can interpolate a high-noise atmospheric window under the independent, zero-mean simulator noise model. It should not be read as evidence, however, that correlated real telluric or sky-subtraction residuals can be removed without additional modeling.
 \end{itemize}
 
-\subsection{Downstream $\log g$ Calibration}
+\subsection{Downstream $\log g$ Estimation}
 
 Surface gravity measurement is a key step in target selection for Galactic Archeology when targeting distant giant stars is the goal and foreground dwarf contamination must be removed. Surface gravity measurement is difficult from low-S/N spectra, so a denoiser that preserves the line shapes can be useful to detecting mis-targeted stars early on into the observations from a few short, noisy exposures. Identifying wrong targets early and repositioning the fibers could help avoid wasting valuable telescope time on less interesting targets.
 
-A pixel-level reconstruction gain is useful for Galactic Archaeology only if the denoised spectrum conveys enough information to a downstream estimator that was trained on clean input to make more accurate predictions from a denoised spectrum than from a noisy one. We, therefore, test the denoiser in a $\log g$ calibration task, where the goal is to predict the surface gravity of a star from its spectrum. The $\log g$ calibrator is trained on clean spectra and evaluated on four representations of the same test spectra without re-training: clean reference, blindspot output, noisy input, and spectra treated to a Savitzky--Golay smoothing filter, see Sec.~\ref{sec:baseline_models}.
+A pixel-level reconstruction gain is useful for Galactic Archaeology only if the denoised spectrum conveys enough information to a downstream estimator that was trained on clean input to make more accurate predictions from a denoised spectrum than from a noisy one. We, therefore, test the denoiser in a $\log g$ estimation task, where the goal is to predict the surface gravity of a star from its spectrum. The $\log g$ estimator is trained on clean spectra and evaluated on four representations of the same test spectra without re-training: clean reference, blindspot output, noisy input, and spectra treated to a Savitzky--Golay smoothing filter, see Sec.~\ref{sec:baseline_models}.
 
-\ld{review this:} The calibrator is tested on a disjoint $5{,}000$-spectrum BOSZ partition (Appendix~\ref{app:contract}). The clean-reference row is an upper bound under this fixed map, not a deployable comparison.
+For our particular $\log g$ estimator, we use a LightGBM model \ld{CITE}, a classical decision tree regressor that uses gradient boosting to handle non-linear relationships between the input features and the target variable. The LightGBM model is trained to predict $\log g$ from clean spectra. The $log~g$ estimator is then evaluated on noisy and different denoised versions of the test spectra, and the performance is measured using the coefficient of determination $R^2$ and the mean absolute error (MAE) between the predicted and true $\log g$ values.
+
+% LightGBM paper:
+% https://www.microsoft.com/en-us/research/wp-content/uploads/2017/11/lightgbm.pdf?msockid=1d869ab6dfab6add27cf8dcdde126b49
 
 \subsection{Baseline Models for Comparison}
 \label{sec:baseline_models}
@@ -521,28 +526,39 @@ The same validation split was used for hyperparameter tuning, the training-time 
 \section{Results}
 \label{sec:results}
 
+In this section, we present the results of the blindspot denoiser on the test spectra. We evaluate the reconstruction performance, the preservation of astrophysically relevant features, and the $\log g$ calibration task. Evaluation of the machine learning models was done using the held-out test set of \ld{$10{,}000$} spectra with a single noise realization per spectrum using the same random seed for each method.
+
+\subsection{Denoising Performance}
+\label{sec:results_denoising}
+
+To measure the overall performance of the denoiser, first we compute the reconstruction RMSE of the denoised spectra against the clean reference over the entire wavelength range for each spectrum. \ld{We need a histogram plot.} Then the mean, the median and the 5 and 95 percentiles of the per spectrum RMSE is taken over the test set. The results are summarized in Table~\ref{tab:main_baselines} where we compare the performance of the blindspot denoiser to baseline methods, including the noisy input, a PCA-based denoiser, and a supervised U-Net denoiser.
+
+On the test data set, mean per-spectrum reconstruction RMSE falls from \ld{$0.084$} on the noisy input to \ld{$0.0053$} on the blindspot output: an improvement of a factor of about $16$. As comparison, the PCA-based denoiser achieves a mean RMSE of \ld{$0.0106$}, an improvement of a factor of about $8$ over the noisy input, whereas the supervised U-Net denoiser achieves a mean RMSE of \ld{$0.0043$}, an improvement of a factor of about $20$ over the noisy input. We note, however, that both the PCA denoised and the supervised U-Net method were trained on clean spectra.
+
+\ld{review:} Figure~\ref{fig:representative_spectrum} shows one faint spectrum where the input drowns the Ca\,\textsc{ii} triplet and the output follows the line cores. The canonical reconstruction test split contains $10{,}000$ spectra with a single noise realization per spectrum and no clean reference at training time (Appendix~\ref{app:contract}).
 
 \begin{table*}
 \centering
-\begin{tabular}{llcc}
+\begin{tabular}{llcccc}
 \hline
-Method & Reference type & Mean RMSE & Median RMSE [$5\%, 95\%$] \\
+Method & Reference type & {Mean} & {Median} & {$5$-percentile} & {$95$-percentile} \\
+       &                & \multicolumn{4}{c}{RMSE} \\
 \hline
-Noisy input & observed input & $0.0843$ & $0.0736$ [$0.0343$, $0.164$] \\
-PCA, $k\!=\!16$ (clean-template) & linear, clean reference & $0.0106$ & $0.00949$ [$0.00542$, $0.0184$] \\
-Blindspot, no $\bar{\sigma}$ & self-supervised & $0.00554$ & $0.00478$ [$0.00210$, $0.0115$] \\
-\textbf{Blindspot $+$ $\bar{\sigma}$ (ours)} & \textbf{self-supervised} & $\mathbf{0.00533}$ & $\mathbf{0.00460}$ [$\mathbf{0.00204}$, $\mathbf{0.0111}$] \\
-Supervised U-Net & clean-target ceiling & $0.00428$ & $0.00368$ [$0.00157$, $0.00907$] \\
+Noisy input & observed input &
+    0.0843\phantom{0} & 0.0736\phantom{0} & 0.0343\phantom{0} & 0.164\phantom{00} \\
+PCA, $k\!=\!16$ (clean-template) & linear, clean reference &
+    0.0106\phantom{0} & 0.00949 & 0.00542 & 0.0184\phantom{0} \\
+Blindspot, no $\bar{\sigma}$ & self-supervised &
+    0.00554 & 0.00478 & 0.00210 & 0.0115\phantom{0} \\
+\textbf{Blindspot $+$ $\bar{\sigma}$} & \textbf{self-supervised} &
+    0.00533 & 0.00460 & 0.00204 & 0.0111\phantom{0} \\
+Supervised U-Net & clean-target ceiling &
+    0.00428 & 0.00368 & 0.00157 & 0.00907 \\
 \hline
 \end{tabular}
-\label{tab:main_baselines}
 \caption{Test-set reconstruction quality on $10{,}000$ test spectra, reported as the per-spectrum root-mean-square reconstruction error $\mathrm{RMSE}=\lVert x-z\rVert_{2}/\sqrt{N}$ against the clean reference (smaller is better; mean and median over spectra). Rows group the observed input, a validation-tuned clean-template PCA reference, the self-supervised blindspot with and without the scalar noise condition $\bar{\sigma}$, and a supervised clean-target reference. The clean-template PCA and supervised U-Net rows are fit with access to clean spectra and are not deployable comparisons; they bound the linear estimator class and the paired-data ceiling respectively. Baseline tuning grids and the noisy-trained PCA are listed in Appendix~\ref{app:controls_gamma}; the central-visible copy-shortcut control is in Appendix~\ref{app:architecture_integrity}.}
+\label{tab:main_baselines}
 \end{table*}
-
-\subsection{Reconstruction performance on the test spectra}
-\label{sec:results_denoising}
-
-On the reconstruction test split, mean per-spectrum reconstruction RMSE falls from $0.084$ on the noisy input to $0.0053$ on the blindspot output: a factor of about $16$, on a metric that compares each denoised spectrum against the withheld clean reference (Table~\ref{tab:main_baselines}). Figure~\ref{fig:representative_spectrum} shows one faint spectrum where the input drowns the Ca\,\textsc{ii} triplet and the output follows the line cores. The canonical reconstruction test split contains $10{,}000$ spectra with a single noise realization per spectrum and no clean reference at training time (Appendix~\ref{app:contract}).
 
 \begin{figure*}
 \centering
@@ -551,15 +567,22 @@ On the reconstruction test split, mean per-spectrum reconstruction RMSE falls fr
 \label{fig:representative_spectrum}
 \end{figure*}
 
+The ablation experiments identify which components contribute to the performance gains. While PCA denoising is a simple, well-understood linear baseline, it is based entirely on clean reference spectra and the limited number of principal components are not sufficient to capture the full complexity of stellar absorption features. This is reflected in the RMSE of $0.0106$ for the PCA-based denoiser, which is more than twice the RMSE of the blindspot denoiser. Including the scalar noise parameter $\bar{\sigma}$ in the blindspot model improves the mean RMSE from $0.0055$ to $0.0053$, indicating that the blindspot construction itself is the primary driver of the reconstruction performance, rather than any information about the variance of the noise. The supervised U-Net denoiser achieves the lowest RMSE of $0.0043$, but it requires access to clean reference spectra for training, which is not almost never available in practice.
 
+The line-preservation diagnostics presented in in Section~\ref{sec:results_physical} establish that the gain from the blindspot denoiser is genuine and not merely a smoothing with a moving window toward the continuum.
 
+\ld{Review:} In Appendix~\ref{app:architecture_integrity}, we verify numerically, that excluding the central pixel from the input of the blindspot network is essential. Without excluding the input pixel corresponding to the target pixel from the convolutional receptive field of the input layer of the network, the result collapse to 
 
-The ablation rows isolate where the gain comes from. A central-visible control that keeps the target bin in the receptive field collapses to the noisy-input scale (Appendix~\ref{app:architecture_integrity}), so the gain requires the blindspot exclusion rather than ordinary regression. The scalar noise condition $\bar{\sigma}$ is a minor refinement --- mean RMSE improves from $0.0055$ to $0.0053$ --- so the reconstruction is carried by the blindspot construction itself, not by the noise-level input. A supervised U-Net trained on paired clean targets reaches $0.0043$; the self-supervised blindspot recovers most of that headroom at $0.0053$ without ever seeing a clean spectrum. The strongest traditional baselines stay far above: a clean-template PCA, fit on noiseless spectra, floors at $0.011$, so the gain over classical and linear methods is not bought by access to clean training data. The line-preservation diagnostics in Section~\ref{sec:results_physical} establish that this gain is genuine line recovery rather than smoothing toward the continuum, and the central-pixel exclusion behind the reconstruction is verified numerically in Appendix~\ref{app:architecture_integrity}. Why the fixed-basis estimators cannot close the gap --- with or without clean targets, and even when granted a rest-frame alignment step --- is taken up in Appendix~\ref{app:controls_gamma} and Section~\ref{sec:discussion}.
+\ld{Review:} and the central-pixel exclusion behind the reconstruction is verified numerically in Appendix~\ref{app:architecture_integrity}. Why the fixed-basis estimators cannot close the gap --- with or without clean targets, and even when granted a rest-frame alignment step --- is taken up in Appendix~\ref{app:controls_gamma} and Section~\ref{sec:discussion}.
 
-\subsection{Downstream clean-trained calibrator transfer}
+\ld{Review: In the appendix, we also show that a central-visible control that keeps the target bin in the receptive field collapses to the noisy-input scale (Appendix~\ref{app:architecture_integrity}), so the gain requires the blindspot exclusion rather than ordinary regression.}
+
+\subsection{Estimating $\log g$ from Denoised Spectra}
 \label{sec:results_downstream_logg}
 
-% A pixel-level reconstruction gain is useful for Galactic Archaeology only if the denoised spectrum still feeds an estimator that was trained on clean inputs. Surface gravity carries the dwarf--giant separation that selects faint Galactic Archaeology samples; the downstream test therefore uses a $\log g$ calibrator trained only on clean spectra and applied unchanged to the denoised reconstructions. We hold the full-spectrum calibrator of Section~\ref{sec:implementation} fixed and feed it four representations of the same reconstruction test spectra: clean reference, blindspot output $\hat{x}$, noisy input $y$, and a validation-tuned Savitzky--Golay smoother. The calibrator is tested on a disjoint $5{,}000$-spectrum BOSZ partition (Appendix~\ref{app:contract}). The clean-reference row is an upper bound under this fixed map, not a deployable comparison.
+Here we verify how a $\log~g$ estimator, trained on clean spectra only, performs on denoised spectra with respect to its performance on the noisy input, smoothed input or clean input.
+
+\ld{review this:} The $\log~g$ estimator is tested on a disjoint $5{,}000$-spectrum BOSZ partition (Appendix~\ref{app:contract}). The clean-reference row is an upper bound under this fixed map, not a deployable comparison.
 
 \begin{figure*}
 \includegraphics[width=\textwidth]{figs/fig4_downstream_clean_domain_transfer.pdf}
@@ -571,7 +594,7 @@ The ablation rows isolate where the gain comes from. A central-visible control t
 \centering
 \begin{tabular}{lcccc}
 \hline
-Input spectrum & $\sigma_{\rm rob}$ [dex] & MAE [dex] & Bias [dex] & $R^{2}$ \\
+Input spectrum & $\sigma_{\rm rob}$ [dex] & MAE & Bias & $R^{2}$ \\
 \hline
 Clean input (upper reference)         & $0.22$ & $0.20$ & $+0.001$ & $0.94$ \\
 \textbf{Blindspot output (ours)}      & $\mathbf{0.80}$ & $\mathbf{0.67}$ & $\mathbf{+0.020}$ & $\mathbf{0.46}$ \\
@@ -579,9 +602,11 @@ Savitzky--Golay smoother (val.\ tuned)& $1.11$ & $0.88$ & $-0.078$ & $0.10$ \\
 Noisy input                           & $1.26$ & $0.96$ & $-0.170$ & $0.01$ \\
 \hline
 \end{tabular}
-\label{tab:downstream_logg}
 \caption{Clean-trained $\log g$ estimator on four reconstruction inputs, evaluated without refitting on $5{,}000$ test spectra. $\sigma_{\rm rob}$ is the centered Gaussian-equivalent dispersion of the residual $\widehat{\log g}-\log g_{\rm true}$; MAE and bias are the mean absolute and mean signed residuals; $R^{2}$ is the coefficient of determination. The clean-input row is an upper reference under the fixed mapping. Paired-bootstrap $95\%$ confidence intervals over $1000$ resamples on the blindspot-vs-noisy ratios are $\sigma_{\rm rob}$-ratio $0.64$ $[0.61,\,0.66]$ and MAE-ratio $0.70$ $[0.68,\,0.72]$.}
+\label{tab:downstream_logg}
 \end{table*}
+
+*** *** ***
 
 The clean-reference $R^{2}$ in Table~\ref{tab:downstream_logg} establishes that the fixed map extracts gravity-discriminating information on this BOSZ support. The blindspot row inherits that information channel: scatter, mean absolute error, and systematic bias all move from the noisy-input scale toward the clean-reference scale, while the validation-tuned Savitzky--Golay smoother in the same configuration stays near the noisy-input scale across the metrics. The bias row makes the contrast sharpest: blindspot output nearly removes the noisy systematic offset (\mbox{$+0.02$} versus $-0.17$~dex), while the smoother remains offset at about $-0.08$~dex. The reduction therefore tracks the line-preserving reconstructions of Section~\ref{sec:results_physical}, not generic noise removal.
 
