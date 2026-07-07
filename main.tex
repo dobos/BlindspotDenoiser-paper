@@ -493,7 +493,11 @@ Surface gravity measurement is a key step in target selection for Galactic Arche
 
 A pixel-level reconstruction gain is useful for Galactic Archaeology only if the denoised spectrum conveys enough information to a downstream estimator that was trained on clean input to make more accurate predictions from a denoised spectrum than from a noisy one. We, therefore, test the denoiser in a $\log g$ estimation task, where the goal is to predict the surface gravity of a star from its spectrum. The $\log g$ estimator is trained on clean spectra and evaluated on four representations of the same test spectra without re-training: clean reference, blindspot output, noisy input, and spectra treated to a Savitzky--Golay smoothing filter, see Sec.~\ref{sec:baseline_models}.
 
-For our particular $\log g$ estimator, we use a LightGBM model \ld{CITE}, a classical decision tree regressor that uses gradient boosting to handle non-linear relationships between the input features and the target variable. The LightGBM model is trained to predict $\log g$ from clean spectra. The $log~g$ estimator is then evaluated on noisy and different denoised versions of the test spectra, and the performance is measured using the coefficient of determination $R^2$ and the mean absolute error (MAE) between the predicted and true $\log g$ values.
+\ld{Add scatter plot to show LightGBM predictions.}
+
+For our $\log g$ estimator, we use a LightGBM model \ld{CITE}, a classical decision tree regressor that uses gradient boosting to handle non-linear relationships between the input features and the target variable. The LightGBM model is trained to predict $\log g$ from clean spectra. The $log~g$ estimator is then evaluated on noisy and different denoised versions of the test spectra, and the performance is measured using the coefficient of determination $R^2$ and the mean absolute error (MAE) between the predicted and true $\log g$ values, see Table~\ref{tab:downstream_logg}.
+
+\ld{review:} The LightGBM model is trained...
 
 % LightGBM paper:
 % https://www.microsoft.com/en-us/research/wp-content/uploads/2017/11/lightgbm.pdf?msockid=1d869ab6dfab6add27cf8dcdde126b49
@@ -507,7 +511,7 @@ For our particular $\log g$ estimator, we use a LightGBM model \ld{CITE}, a clas
 
 \ld{The supervised U-Net denoising autoencoder is trained on paired noisy-clean spectra, where the clean spectra serve as the target for the network to learn to reconstruct from the noisy input. The architecture of the supervised U-Net is similar to that of the blindspot model, but it does not have the blindspot constraint on the receptive field and can use the full noisy spectrum as input, including the observed value of each pixel, to predict the noiseless pixel values.}
 
-\ld{validation-tuned Savitzky--Golay smoother}
+\ld{We also applied to the noisy spectra a Savitzky--Golay smoothing filter, a classical signal-processing technique that fits a low-degree polynomial to a moving window of the input signal and replaces the center point with the value of the fitted polynomial. For our particular application, we used a Savitzky--Golay filter with a window size of ...}
 
 \subsection{Training Data Sets}
 
@@ -539,14 +543,14 @@ On the test data set, mean per-spectrum reconstruction RMSE falls from \ld{$0.08
 
 \begin{table*}
 \centering
-\begin{tabular}{llcccc}
+\begin{tabular}{llllll}
 \hline
 Method & Reference type & {Mean} & {Median} & {$5$-percentile} & {$95$-percentile} \\
        &                & \multicolumn{4}{c}{RMSE} \\
 \hline
 Noisy input & observed input &
     0.0843\phantom{0} & 0.0736\phantom{0} & 0.0343\phantom{0} & 0.164\phantom{00} \\
-PCA, $k\!=\!16$ (clean-template) & linear, clean reference &
+PCA, $k\!=\!16$ (clean-template) & clean reference &
     0.0106\phantom{0} & 0.00949 & 0.00542 & 0.0184\phantom{0} \\
 Blindspot, no $\bar{\sigma}$ & self-supervised &
     0.00554 & 0.00478 & 0.00210 & 0.0115\phantom{0} \\
@@ -580,7 +584,7 @@ The line-preservation diagnostics presented in in Section~\ref{sec:results_physi
 \subsection{Estimating $\log g$ from Denoised Spectra}
 \label{sec:results_downstream_logg}
 
-Here we verify how a $\log~g$ estimator, trained on clean spectra only, performs on denoised spectra with respect to its performance on the noisy input, smoothed input or clean input.
+Here we verify how a LightGBM $\log~g$ estimator, trained on clean spectra only, performs on denoised spectra with respect to its performance on clean input, noisy input, and smoothed noisy input.
 
 \ld{review this:} The $\log~g$ estimator is tested on a disjoint $5{,}000$-spectrum BOSZ partition (Appendix~\ref{app:contract}). The clean-reference row is an upper bound under this fixed map, not a deployable comparison.
 
@@ -594,58 +598,87 @@ Here we verify how a $\log~g$ estimator, trained on clean spectra only, performs
 \centering
 \begin{tabular}{lcccc}
 \hline
-Input spectrum & $\sigma_{\rm rob}$ [dex] & MAE & Bias & $R^{2}$ \\
+Input & $\sigma_{\rm rob}$ & MAE & Bias & $R^{2}$ \\
 \hline
-Clean input (upper reference)         & $0.22$ & $0.20$ & $+0.001$ & $0.94$ \\
-\textbf{Blindspot output (ours)}      & $\mathbf{0.80}$ & $\mathbf{0.67}$ & $\mathbf{+0.020}$ & $\mathbf{0.46}$ \\
-Savitzky--Golay smoother (val.\ tuned)& $1.11$ & $0.88$ & $-0.078$ & $0.10$ \\
-Noisy input                           & $1.26$ & $0.96$ & $-0.170$ & $0.01$ \\
+Clean spectrum (upper reference)      & $0.22$ & $0.20$ & $+0.001$ & $0.94$ \\
+\textbf{Blindspot-denoised spectrum}  & $\mathbf{0.80}$ & $\mathbf{0.67}$ & $\mathbf{+0.020}$ & $\mathbf{0.46}$ \\
+Noisy spectrum smoothed with Savitzky--Golay & $1.11$ & $0.88$ & $-0.078$ & $0.10$ \\
+Noisy spectrum smoothed with boxcar   &  &  &  &  \\
+Noisy spectrum                        & $1.26$ & $0.96$ & $-0.170$ & $0.01$ \\
 \hline
 \end{tabular}
-\caption{Clean-trained $\log g$ estimator on four reconstruction inputs, evaluated without refitting on $5{,}000$ test spectra. $\sigma_{\rm rob}$ is the centered Gaussian-equivalent dispersion of the residual $\widehat{\log g}-\log g_{\rm true}$; MAE and bias are the mean absolute and mean signed residuals; $R^{2}$ is the coefficient of determination. The clean-input row is an upper reference under the fixed mapping. Paired-bootstrap $95\%$ confidence intervals over $1000$ resamples on the blindspot-vs-noisy ratios are $\sigma_{\rm rob}$-ratio $0.64$ $[0.61,\,0.66]$ and MAE-ratio $0.70$ $[0.68,\,0.72]$.}
+\caption{\ld{Need scatter plots of these!} Clean-trained $\log g$ estimator on four reconstruction inputs, evaluated without refitting on $5{,}000$ test spectra. $\sigma_{\rm rob}$ is the centered Gaussian-equivalent dispersion of the residual $\widehat{\log g}-\log g_{\rm true}$; MAE and bias are the mean absolute and mean signed residuals; $R^{2}$ is the coefficient of determination. The clean-input row is an upper reference under the fixed mapping. Paired-bootstrap $95\%$ confidence intervals over $1000$ resamples on the blindspot-vs-noisy ratios are $\sigma_{\rm rob}$-ratio $0.64$ $[0.61,\,0.66]$ and MAE-ratio $0.70$ $[0.68,\,0.72]$.}
 \label{tab:downstream_logg}
 \end{table*}
 
-*** *** ***
+We summarize the performance of the $\log g$ estimator on four \ld{why can't we add the boxcar line here?} different representations of the simulated spectra in Table~\ref{tab:downstream_logg}. We performed the test on the clean reference spectra, the blindspot-denoised spectra, the noisy spectra smoothed with a Savitzky--Golay filter, and the noisy spectra. The metrics reported are the \ld{centered robust scatter $\sigma_{\rm rob}$ -- is it really? isn't it just the scatter?}, the mean absolute error (MAE), the mean signed bias, and the coefficient of determination $R^{2}$.
 
-The clean-reference $R^{2}$ in Table~\ref{tab:downstream_logg} establishes that the fixed map extracts gravity-discriminating information on this BOSZ support. The blindspot row inherits that information channel: scatter, mean absolute error, and systematic bias all move from the noisy-input scale toward the clean-reference scale, while the validation-tuned Savitzky--Golay smoother in the same configuration stays near the noisy-input scale across the metrics. The bias row makes the contrast sharpest: blindspot output nearly removes the noisy systematic offset (\mbox{$+0.02$} versus $-0.17$~dex), while the smoother remains offset at about $-0.08$~dex. The reduction therefore tracks the line-preserving reconstructions of Section~\ref{sec:results_physical}, not generic noise removal.
+\ld{
+Robust scatter $\sigma_{\rm rob}$ is a measure of the spread of the residuals between the predicted and true $\log g$ values. It is defined as
+\begin{equation}
+    \sigma_{\rm rob} = 1.4826 \cdot \mathrm{median}(|\Delta - \mathrm{median}(\Delta)|),
+\end{equation}
+where $\Delta = \hat{g} - g_{\rm true}$ is the residual between the predicted and true $\log g$ values. The factor $1.4826$ scales the median absolute deviation to be comparable to the standard deviation for a Gaussian distribution. A smaller $\sigma_{\rm rob}$ indicates better performance of the $\log g$ estimator.
+}
 
-Across the four BOSZ labels in Figure~\ref{fig:downstream_clean_domain_transfer}, the blindspot point sits below both the noisy point and the classical smoother point at every label, and the same ordering holds across the five split seeds. The labels separate into an easier temperature/radial-velocity group and a harder gravity/metallicity group, matching the line-shape and line-strength sensitivity of these targets. The validation-tuned smoother reduces scatter for some labels but stays close to the noisy-input scale for surface gravity and metallicity, so it does not substitute for the blindspot reconstruction.
 
-The blindspot row tracks the clean column at an approximately fixed offset across calibrator-training sizes, while noisy and smoother rows stay flat at the noisy-input scale (Appendix~\ref{app:downstream_logg}, Table~\ref{tab:downstream_logg_sweep}). The denoiser therefore moves the noisy spectrum toward the calibrator's clean-input feature manifold rather than merely rescaling it, and the Table~\ref{tab:downstream_logg} numbers are not a special operating-point artefact.
+The coefficient of determination $R^2$ measures the proportion of variance in the true $\log g$ values that is explained by the predicted values. It is defined as
+\begin{equation}
+    R^2 = 1 - \frac{\sum_{i=1}^{N} (x_i - \hat{x}_i)^2}{\sum_{i=1}^{N} (x_i - \bar{x})^2},
+\end{equation}
+where $x_i$ is the true value, $\hat{x}_i$ is the predicted value, $\bar{x}$ is the mean of the true values, and $N$ is the number of data points. An $R^2$ value of $1$ indicates perfect predictions, while a value of $0$ indicates that the model does no better than predicting the mean of the true values.
 
-\subsection{Line-preservation diagnostics}
+The value of $R^{2}$ for the clean reference in Table~\ref{tab:downstream_logg} establishes that the LightGBM model is capable of extracting gravity information from clean spectra sufficiently well, whereas the coefficient is almost zero for the noisy input and very close to zero for the smoothed input. The blindspot-denoised spectra achieve an $R^{2}$ of $0.46$, which is a significant improvement over the noisy input and the smoothed input, but still substantially below the clean-reference performance. This indicates that our $\log g$ estimator is not robust against noise, yet the blindspot denoiser is able to recover enough information from the noisy spectra to improve $\log g$ estimation.
+
+% The bias row makes the contrast sharpest: blindspot output nearly removes the noisy systematic offset (\mbox{$+0.02$} versus $-0.17$~dex), while the smoother remains offset at about $-0.08$~dex. The reduction therefore tracks the line-preserving reconstructions of Section~\ref{sec:results_physical}, not generic noise removal.
+
+\subsection{Other Stellar Parameters}
+
+We repeated the same experiment as with $\log g$ for the fundamental stellar parameters effective temperature $T_{\rm eff}$ and metallicity $[\mathrm{M}/\mathrm{H}]$, as well as for radial velocity $RV$. The latter is especially interesting because small velocities only cause sub-pixel shifts in medium resolution spectra, so the denoiser must preserve the line shapes to avoid biasing the velocity estimate. The results are summarized in Table~\ld{XX -- add table} and Figure~\ref{fig:downstream_clean_domain_transfer}, where we plot the centered robust scatter $\sigma_{\rm rob}$ of the residuals for each parameter and each representation of the test spectra.
+
+For each of the stellar parameters and RV, the blindspot denoiser consistently improves the downstream estimation performance compared to the noisy input and the smoothed input. 
+
+% Across the four BOSZ labels in Figure~\ref{fig:downstream_clean_domain_transfer}, the blindspot point sits below both the noisy point and the classical smoother point at every label, and the same ordering holds across the five split seeds. The labels separate into an easier temperature/radial-velocity group and a harder gravity/metallicity group, matching the line-shape and line-strength sensitivity of these targets. The validation-tuned smoother reduces scatter for some labels but stays close to the noisy-input scale for surface gravity and metallicity, so it does not substitute for the blindspot reconstruction.
+
+% The blindspot row tracks the clean column at an approximately fixed offset across calibrator-training sizes, while noisy and smoother rows stay flat at the noisy-input scale (Appendix~\ref{app:downstream_logg}, Table~\ref{tab:downstream_logg_sweep}). The denoiser therefore moves the noisy spectrum toward the calibrator's clean-input feature manifold rather than merely rescaling it, and the Table~\ref{tab:downstream_logg} numbers are not a special operating-point artefact.
+
+\subsection{Line Preservation Diagnostics}
 \label{sec:results_physical}
 
-Aggregate reconstruction RMSE does not by itself exclude simple smoothing or line filling. We therefore test the reconstructed spectra with a line-sensitive diagnostic --- relative equivalent-width error on each Ca\,\textsc{ii} triplet line --- and, separately, a high-noise control in the sky-dominated \mbox{O$_2$} A-band, which is an atmospheric-window stress test rather than a stellar-line diagnostic (Table~\ref{tab:main_results}).
+While the fundametal stellar parameter are sensitive to the line shapes, they aggregate information across the full spectrum. We therefore also test the blindspot denoiser with line-sensitive diagnostics, namely the relative error of the equivalent width, see Eq.~\ref{eq:ew_relative_error}, of the Ca\,\textsc{ii} triplet lines, and a high-noise control in the sky-dominated \mbox{O$_2$} A-band. The results are summarized in Table~\ref{tab:main_results}.
 
-\begin{table*}
+% Aggregate reconstruction RMSE does not by itself exclude simple smoothing or line filling. We therefore test the reconstructed spectra with a line-sensitive diagnostic --- relative equivalent-width error on each Ca\,\textsc{ii} triplet line --- and, separately, a high-noise control in the sky-dominated \mbox{O$_2$} A-band, which is an atmospheric-window stress test rather than a stellar-line diagnostic (Table~\ref{tab:main_results}).
+
+\begin{table}
 \centering
-\small
-\setlength{\tabcolsep}{5pt}
-\caption{Line-sensitive and high-noise-window reconstruction diagnostics on the test split. Equivalent-width entries use the relative error in Equation~\ref{eq:ew_relative_error}. The \mbox{O$_2$} A-band rows are an atmospheric-window stress test, not a stellar-line diagnostic. Per-line bootstrap confidence intervals and the Ca\,\textsc{ii} morphology panel are reported in Appendix~\ref{app:line_addenda}.}
-\label{tab:main_results}
 \begin{tabular}{lcc}
 \hline
+           & \multicolumn{2}{c}{Relative error of EW} \\
 Diagnostic & Noisy input $y$ & Blindspot output $\hat{x}$ \\
 \hline
-\multicolumn{3}{l}{\emph{Ca\,\textsc{ii} triplet relative EW error}} \\
-$\quad 8498$~\AA{} & $0.737$ & $\mathbf{0.121}$ \\
-$\quad 8542$~\AA{} & $0.328$ & $\mathbf{0.098}$ \\
-$\quad 8662$~\AA{} & $1.02$ & $\mathbf{0.147}$ \\
+\multicolumn{3}{l}{\emph{Ca\,\textsc{ii} triplet}} \\
+$\quad 8498$~\AA{} & $\phantom{0}0.737$ & $\mathbf{0.121}$ \\
+$\quad 8542$~\AA{} & $\phantom{0}0.328$ & $\mathbf{0.098}$ \\
+$\quad 8662$~\AA{} & $\phantom{0}1.02\phantom{0}$ & $\mathbf{0.147}$ \\
 \hline
-\multicolumn{3}{l}{\emph{\mbox{O$_2$} A-band window, $7590$--$7700$~\AA{}}} \\
-$\quad$Mean relative EW degradation & $22.2$ & $\mathbf{1.19}$ \\
+\multicolumn{3}{l}{\emph{\mbox{O$_2$} A-band window}} \\
+$\quad 7590$--$7700$~\AA{} & $22.2\phantom{0}$ & $\mathbf{1.19\phantom{0}}$ \\
 \hline
 \end{tabular}
-\end{table*}
+\caption{\ld{Need to show scatter plot of EW} Line-sensitive and high-noise-window reconstruction diagnostics on the test split. Equivalent-width entries use the relative error in Equation~\ref{eq:ew_relative_error}. The \mbox{O$_2$} A-band rows are an atmospheric-window stress test, not a stellar-line diagnostic. Per-line bootstrap confidence intervals and the Ca\,\textsc{ii} morphology panel are reported in Appendix~\ref{app:line_addenda}.}
+\label{tab:main_results}
+\end{table}
 
 \begin{figure*}
 \centering
 \includegraphics[width=\linewidth]{figs/fig3_caII_zoom_panels.pdf}
-\caption{Ca\,\textsc{ii} triplet zoom for the same representative test spectrum as Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. Each panel overlays the noisy input $y$, the clean reference $x$, and the blindspot output $\hat{x}$. Markers indicate the individual sampled wavelength bins; connecting lines are visual guides only. In the $8542$~\AA{} panel, the apparent asymmetry of the clean reference is caused by the mask-pruned wavelength sampling around the line center, not by an asymmetric input line model. The blindspot reconstruction follows the depth and width of the Ca\,\textsc{ii} cores without flattening them toward the continuum.}
+\caption{\ld{Text in legend is too small.} Ca\,\textsc{ii} triplet zoom for the same representative test spectrum as Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. Each panel overlays the noisy input $y$, the clean reference $x$, and the blindspot output $\hat{x}$. Markers indicate the individual sampled wavelength bins; connecting lines are visual guides only. In the $8542$~\AA{} panel, the apparent asymmetry of the clean reference is caused by the mask-pruned wavelength sampling around the line center, not by an asymmetric input line model. The blindspot reconstruction follows the depth and width of the Ca\,\textsc{ii} cores without flattening them toward the continuum.}
 \label{fig:caII_zoom}
 \end{figure*}
+
+In Table~\ref{tab:main_results}, we summarize the relative error of the equivalent width of the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band window as it is measured on the noisy input and the blindspot output. The Ca\,\textsc{ii} triplet lines are also plotted in Figure~\ref{fig:caII_zoom}.
+
+*******
 
 All three Ca\,\textsc{ii} lines move in the same direction in Table~\ref{tab:main_results}: the recovery is not concentrated on the strongest core. The \mbox{O$_2$} A-band rows extend the same test into a narrow, high-noise atmospheric window dominated by sky and detector terms; the window is recovered rather than dropped, under this simulator. Figure~\ref{fig:caII_zoom} supplies the morphology behind the table: the blindspot output follows the depth and width of the line cores rather than flattening them toward the continuum.
 
