@@ -13,6 +13,7 @@
 \newcommand{\ld}[1]{\textcolor{red}{\textbf{#1}}}
 
 \newcommand{\m}[1]{\boldsymbol{#1}}
+\newcommand{\SNR}{\mathrm{S}/\mathrm{N}}
 
 \newcounter{algorithm}
 \renewcommand{\thealgorithm}{\arabic{algorithm}}
@@ -275,7 +276,7 @@ as long as the forward pass ensures one invariant: the feature used to predict t
     \begin{center}
         \includegraphics{figs/network.pdf}
     \end{center}
-    \caption{Illustration of the blindspot network architecture for the prediction of a single spectrum pixel $\hat{x}_{\lambda}$. The two UNet blocks of $U_{\theta}$ are identical with the same weights but their receptive fields are only $\m{y}_{<\lambda}$ and $\m{y}_{>\lambda}$, respectively and $y_{\lambda}$ is excluded from both. The left block processes the input spectrum in increasing wavelength order, while the input of the right block is reversed in wavelength order. The two feature vectors $\m{u}^{L}$ and $\m{u}^{R}$ are concatenated and passed to the pointwise head $g_{\theta}$ to predict $\hat{x}_{\lambda}$.}
+    \caption{Illustration of the blindspot network architecture for the prediction of a single spectrum pixel $\hat{x}_{\lambda}$. The two UNet blocks of $U_{\theta}$ are identical with the same weights but their receptive fields are only $\m{y}_{<\lambda}$ and $\m{y}_{>\lambda}$, respectively and $y_{\lambda}$ is excluded from both. The left block processes the input spectrum in increasing wavelength order, while the input of the right block is reversed in wavelength order. The two feature vectors $\m{u}^{L}$ and $\m{u}^{R}$ are concatenated and passed to the pointwise head $g_{\theta}$ to predict $\hat{x}_{\lambda}$. For simplicity, the figure shows only the flux channel, but the network can also accept a second channel for the variance. We input the mean of the variance vector $\bar{\sigma}$ to both branches, so that the network can adapt to the overall noise level of the spectrum but it does not get the individual pixel variances.}
     \label{fig:network}
 \end{figure}
 
@@ -566,8 +567,13 @@ Supervised U-Net & clean-target ceiling &
 
 \begin{figure*}
 \centering
-\includegraphics[width=\textwidth]{figs/fig1_representative.pdf}
-\caption{Representative low-S/N test spectrum near the faint end of the magnitude range ($T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$, $\mathrm{mag}=22.45$, input S/N approximately $3$). \textbf{Top:} noisy input $y$ and clean reference $x$ on the full mask-pruned wavelength grid, with the Ca\,\textsc{ii} triplet region shaded. \textbf{Middle:} clean reference $x$ and blindspot output $\hat{x}$, offset for readability, with the residual $x-\hat{x}$ shown below. \textbf{Bottom:} Ca\,\textsc{ii} triplet zoom. The output follows the narrow Ca\,\textsc{ii} cores rather than flattening them toward the continuum. The S/N labels report $\mathrm{median}_{\lambda}(x_{\lambda}/\sigma_{\lambda})$ over the unmasked pixels of this spectrum, always with the clean reference flux $x_{\lambda}$ in the numerator. The input label uses the known simulator noise $\sigma_{\lambda}$; the output labels use the empirical per-pixel spread of the blindspot output across $10^{4}$ independent noise realizations of this spectrum (Appendix~\ref{app:noise_stability}), with the Ca\,\textsc{ii} label restricted to the shaded window.}
+\includegraphics[width=0.95\textwidth]{figs/fig1_representative.pdf}
+\caption{
+    Illustration of the effect of the blindspot denoiser on a single representative low-S/N simulated spectrum from the faint end of the magnitude range with a magnitude of $\mathrm{mag}=22.45$ and atmospheric parameters of $T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$. The input spectrum has a per-pixel average signal-to-noise of $\mathrm{S}/\mathrm{N}=3$.
+    \textbf{Top panel:} The noisy input spectrum $y$ (black dots), the clean reference spectrum $x$ (light blue line) and the blindspot output $\hat{x}$ (dark blue line, shifted vertically for clarity). In the bottom half of the top panel, the residuals $x-\hat{x}$ are shown.
+    \textbf{Bottom panel:} Same as the top panel, but zoomed in on the Ca\,\textsc{ii} triplet region.
+    Note that certain wavelength bins of the simulated spectrum are masked at the locations of strong sky emission lines.
+}
 \label{fig:representative_spectrum}
 \end{figure*}
 
