@@ -388,13 +388,27 @@ In case of typical medium-resolution stellar spectra, the wavelength resolution 
 \ld{??? We verify this S/N range directly on clean BOSZ test spectra: simple local predictors leave residual variance below about $10^{-3}$ of the injected per-pixel noise variance in the conservative $95$th-percentile summary, with the full per-estimator measurement table given in Appendix~\ref{app:controls_gamma}.}
 Spectra with different surface gravity distributions, or a different line-spread function should be verified separately rather than assumed to share the same small-$\gamma$ range. We therefore use the small-$\gamma$ argument as a range statement for this simulated data set, not as an unconditional guarantee beyond it.
 
-\subsection{Parameter estimation from denoised spectra}
+\subsection{Information limits on downstream tasks}
+
+In order to estimate a stellar parameter $\varphi$ from a noisy spectrum, the Fisher information matrix $\mathcal{I}_{\varphi}$ quantifies the amount of information that the noisy observation $\m{y}$ carries about the parameter $\phi$. For scalar $\varphi$, the Fisher information takes the form of
+\begin{equation}
+    \mathcal{I}_{\varphi}(\m{y}) = \mathbb{E}\!\left[\left(\frac{\partial}{\partial \varphi}\log p(\m{y}\mid\varphi)\right)^{2}\right],
+\end{equation}
+where $p(\m{y}\mid\varphi)$ is the likelihood of the noisy observation $\m{y}$ given the parameter $\varphi$. The Fisher information matrix is a lower bound on the covariance of any unbiased estimator of $\varphi$ through the Cramér-Rao bound. The denoiser network $f_\theta$ is a deterministic transformation of the noisy observation $\m{y}$ into a denoised spectrum $\hat{\m{x}}$, hence the information about $\varphi$ in the denoised spectrum $\hat{\m{x}}$ cannot exceed the information in the noisy observation $\m{y}$, which is expressed by the data processing inequality
+\begin{equation}
+    \mathcal{I}_{\varphi}(\m{y}) \geq \mathcal{I}_{\varphi}(\hat{\m{x}}),
+\end{equation}
+and the inequality is strict unless $f_\theta$ is invertible, but this is not the case for a blindspot denoiser. The Fisher information matrix therefore provides a theoretical upper bound on the performance of any downstream estimator that uses the denoised spectrum $\hat{\m{x}}$ to estimate the parameter $\varphi$.
+%
+% \subsection{Parameter estimation from denoised spectra}
 
 % \paragraph{From pixel recoverability to non-linear downstream tasks}
-The recoverability ratio in Equation~\ref{eq:gamma} concerns pixel-level reconstruction. Downstream tasks, such as surface gravity measurement, see Section~\ref{sec:results_downstream_logg}, are non-linear functionals of the full spectrum and are not directly bounded by $\gamma$. Hence, we make the weaker claim that a blindspot denoiser can recover the line shape well enough so that a downstream non-linear regressor, trained solely on clean spectra and known labels, can make use of the denoised spectra without retraining.
+The recoverability ratio in Equation~\ref{eq:gamma} concerns pixel-level reconstruction. Downstream tasks, such as equivalent width measurement and atmospheric parameter estimation, see Sections~\ref{sec:metrics}~and~\ref{sec:results_downstream_logg}, are non-linear functionals of the full spectrum and are not directly bounded by $\gamma$. Hence, instead of claiming that the denoiser preserves, or even enchances the information about the stellar parameters,we can only make the weaker claim that a blindspot denoiser can recover the line shape well enough so that a downstream non-linear regressor, trained solely on clean spectra and known labels, can make use of the denoised spectra without retraining.
+
+This implies, as we will show in Section~\ld{XX}, that while the variance of equivalent width measurements from denoised spectra is significantly smaller than that from noisy spectra, the EWs are biased. Line shape appears to be preserved to leading order, but the denoiser does not recover the full information content of the lines. For example, strong bias is clearly visible in the wings of Ca\,\textsc{ii} lines which are, in case of metal-poor giant stars, sensitive to surface gravity. This foreshadows that the denoiser will not fully recover the information about $\log g$.
 %We make the weaker structural claim that a blindspot denoiser whose error is dominated by recoverable local residuals can preserve the line-shape statistics that a clean-trained nonlinear regressor reads, including line position, depth, and width, to leading order in the per-pixel residual.
 
-This is consistent with the \ld{??? calibration transfer} results in Section~\ref{sec:results_downstream_logg}, where we are going to demonstrate that the denoised spectra can be used to improve $\log g$ estimation from noisy specra based on classical machine learning regression trained on clean spectra. Calculating a formal information channel bound for this propagation is left for future work. The present paper treats the calibration result as empirical confirmation of line preservation results in Section~\ref{sec:results_physical}.
+This is consistent with the \ld{??? calibration transfer} results in Section~\ref{sec:results_downstream_logg}, where we are going to demonstrate that the denoised spectra cannot be used to improve $\log g$ estimation from noisy specra based on classical machine learning regression trained on clean spectra. Calculating a formal information channel bound for this propagation is left for future work. The present paper treats the calibration result as empirical confirmation of line preservation results in Section~\ref{sec:results_physical}.
 %
 %, where a LightGBM gravity regressor trained on clean spectra and evaluated without refitting is used to predict $\log g$ from the noisy and the denoised spectra. The blindspot denoiser raised the coefficient of determination from $R^{2}\approx0.01$ to $R^{2}\approx0.46$ and removed most of the noisy-input systematic bias. As a contrast, results from using simple pixel-domain smoothers remain close to the noisy-input value.
 %
@@ -428,6 +442,7 @@ The detailed training procedure was as follows:
 We trained the blindspot denoiser in two configurations: one with a single-channel input for the noisy flux only, and one with a two-channel input for the noisy flux and the constant $\bar{\sigma}$ vector which is just a summary of the per-pixel variance vector.
 
 \subsection{Metrics for Performance Evaluation}
+\label{sec:metrics}
 
 We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the \mbox{O$_2$} A-band. The first metric is a standard measure of reconstruction quality, while the latter two are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
 
@@ -715,6 +730,15 @@ The downstream gain of Section~\ref{sec:results_downstream_logg} is therefore ca
 
 \section{Discussion}
 \label{sec:discussion}
+
+\ld{Add these:
+\begin{itemize}
+    \item denoiser-induced bias: denoiser reduces variance but introduces bias
+    \item EW have smaller error but larger bias
+    \item 
+\end{itemize}
+}
+
 In this simulated target support, noisy-only blindspot training lowers the mean reconstruction RMSE from $0.084$ on the noisy input to $0.0053$ on test spectra, below validation-tuned classical filters, noisy-PCA, and a non-deployable clean-template PCA reference. The line-sensitive diagnostics in Section~\ref{sec:results_physical} show that this gain is not obtained by simply filling absorption features toward the continuum: Ca\,\textsc{ii} EW errors decrease substantially. The full-spectrum calibrator in Section~\ref{sec:results_downstream_logg} then provides the end-to-end result: after training only on clean spectra, the $\log g$ estimator reads substantially more label information from blindspot-denoised spectra than from noisy or conventionally smoothed spectra.
 
 \paragraph{Rest-frame alignment as a deployment cost.} The reconstruction ceiling of the linear baselines in Table~\ref{tab:main_baselines} --- a property of the estimator class rather than of tuning, as Appendix~\ref{app:controls_gamma} shows --- is sometimes read as a mere preprocessing gap: shift every spectrum to its rest frame first, and the basis would no longer have to span a separate velocity copy of each line. That repair is not available in the setting this paper targets. Rest-frame resampling needs the per-spectrum radial velocity, and recovering it without a clean template reintroduces the supervised dependency that the noisy-only construction is built to remove. At the faint magnitudes that motivate denoising, a velocity estimated from the noisy spectrum itself is uncertain, and that uncertainty propagates into every realigned pixel. Granting an exact velocity does not make the alignment free either. Resampling onto a common grid is an interpolation that forms each output pixel from a weighted sum of neighbors. This couples the previously independent per-pixel noise draws that the consistency argument of Section~\ref{sec:theory} depends on, and it low-pass filters the narrow line cores, broadening and shallowing exactly the high-frequency, low-variance structure the fixed basis already cannot recover. Alignment thus either reintroduces clean-reference supervision or degrades the signal it is meant to expose. The blindspot estimator never faces this choice: it predicts each bin from the local shape of its neighborhood with the center withheld, so a global velocity shift slides the evaluation window without altering the learned line-shape-to-flux map. Its invariance to radial velocity is built into the estimator rather than supplied by a preprocessing stage that must first be made to work.
