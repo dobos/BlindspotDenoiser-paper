@@ -1,5 +1,6 @@
 \documentclass[twocolumn]{aastex7}
 \usepackage{amssymb, amsmath}
+\usepackage{array}
 \usepackage{subcaption}
 \usepackage{xcolor}
 \usepackage{tcolorbox}
@@ -117,11 +118,9 @@ The source code of the blindspot denoiser is publicly available on Github\footno
 \label{sec:introduction}
 \ld{Mention these
 \begin{itemize}
-    \item the Fisher information cannot increase
     \item the denoiser might be able to concentrate information into features
     \item this might need training with label 
-    \item the encoder of the denoise might be a good feature extractor
-    \item 
+    \item the encoder of the denoised spectrum might be a good feature extractor
 \end{itemize}}
 
 Galactic Archaeology analyses stellar spectra by measuring radial velocities, atmospheric parameters, and elemental abundances that trace the formation and evolution of stellar populations. Large multiplexed surveys of resolved stars typically pre-select targets from imaging catalogs before their membership can be confirmed spectroscopically \citep{Dey2019_LegacySurveys,Majewski2017_APOGEE}, so many faint members of the resulting samples are observed near the low $\SNR$ limit, where indiviual line measurements become fragile. Low signal-to-noise spectra directly limit target triage, follow-up strategy, and the scientific yield of the instrument. At magnitudes fainter than $g > 22$, the $\SNR$ of the observations is primarily determined by the continuum sky emission in the blue and the continuum and strong emission lines in the red and near infrared bands. Telluric absorption \citep{Osterbrock1996_SkyAtlas,Hanuschik2003_SkyAtlas,Noll2012_ParanalSky} is severe in some relatively broad wavelength ranges which further increases the photon noise floor and ultimately limits the recovery of the narrow absorption line features that carry the astrophysically useful information \citep{Bouchy2001_RVLimit}. A denoiser is useful at these $\SNR$ levels only if it reduces reconstruction error without erasing the line features; verifying line preservation therefore frames the rest of this paper. Among the stellar labels, surface gravity is the most direct dwarf--giant discriminator and drives target membership decisions for faint Galactic Archaeology samples, \ld{surface gravity is therefore the primary label tested in Section~\ref{sec:results_downstream_logg}}.
@@ -169,6 +168,7 @@ Two questions follow that the rest of the paper addresses directly: whether one-
 \label{sec:method}
 
 \subsection{Simulated Spectroscopic Observations}
+\label{sec:simulations}
 
 Our experiment uses simulated observations of medium resolution optical spectra derived from the BOSZ high-resolution synthetic stellar grid \citep{Bohlin2017,Meszaros2012}, based on ATLAS9 atmospheres \citep{Kurucz1979}. The synthetic spectrum is first convolved with the line-spread function and resampled to the detector pixels of a medium resolution spectrograph, similar to the Subaru Prime Focus Spectrograph (PFS) instrument, as summarized in Table~\ref{tab:data_summary}. Then the flux is converted into physical units to match the desired broad-band magnitude. After applying the instrumental transmission function and the detector response function, the photon noise, dark noise and read-out noise variances are calculated in the unit of detector counts. Finally, assuming a Gaussian limit and independence of the noise between wavelength bins, a single noise variance is assigned to every spectral pixel. We note, that for the faint end of the simulated magnitude range, the sky emission can dominate the noise budget. We assumed moonless night conditions only.
 
@@ -218,6 +218,8 @@ We avoid continuum normalization of the simulated observations because finding t
     }
     \label{tab:data_summary}
 \end{table}
+
+The simulations realistically model sky emission lines which are abundant in the investigated wavelength range. Due to some strong emission lines, certain wavelength regions can have significantly higher noise levels, which must be accounted for in the denoising process. We decided to explicitly exclude these wavelength from the analysis and used a mask, the same for each spectrum, that kept only $3481$ wavelength bins out of the $4096$. We note, that this mask is different from the random mask that we used during the training of the blindspot network, see Sec.~\ref{sec:training}.
 
 \subsection{Noise Model}
 The observation simulator outputs the wavelength grid, normalized clean flux $x_\lambda$, normalized noisy flux $y_\lambda$, and the per-pixel uncertainty vector $\sigma_\lambda$. The per-pixel variance is calculated as
@@ -297,6 +299,8 @@ Under the symmetric zero-mean per-pixel noise model of Equation~\ref{eq:noise_mo
     \label{eq:population_target}
 \end{equation}
 The equality follows because the noise has zero conditional mean. Asymmetric or heavy-tailed noise, or a $\delta$ comparable to or smaller than the typical magnitude of the residuals, would shift the optimum toward a location determined by the outliers rather than the conditional mean.
+
+As we mentioned in Sec~\ref{sec:simulations}, the simulated spectra have associated masks that indicate which wavelength bins are considered valid for analysis. The mask is constant across all spectra, and filter out wavelength bins where the flux is dominated by strong sky emission lines, resulting in significantly higher noise levels. To avoid extreme outliers, we leave these pixels out of the analysis. As a result, instead of reconstructing the flux strictly from the immediate neighborhood of each wavelength bin, we reconstruct the flux from a fixed number of unmasked pixels which are not necessarily adjacent to the target bin.
 
 \subsection{Blindspot Network Architecture}
 \label{sec:blindspot_algorithm}
@@ -488,7 +492,24 @@ This is also consistent with the \ld{??? calibration transfer} results in Sectio
 % sec:data_noise retained as legacy alias for cross-references in Appendix and earlier drafts.
 % \label{sec:data_noise}
 
+\subsection{Training Data Sets}
+
+% Exact model hyperparameters, evaluation-contract details, and validation-tuning rules for the non-neural reference methods are collected in Appendices~\ref{app:contract}--\ref{app:controls_gamma}.
+
+To train the denoiser model, the training, validation, and test sets contain $200{,}000$, $1{,}000$, and $10{,}000$ spectra respectively, drawn without replacement from the same library of simulated spectra. The marginal distributions of $T_{\rm eff}$, $\log g$, $[\mathrm{M}/\mathrm{H}]$, and magnitude match across the training data splits, as listed in Tab.~\ref{tab:data_summary}.
+
+Since the simulator outputs the clean flux, as well as the noise variance as a function of wavelength, we can scale the noise appropriately to generate noisy spectra with the desired signal-to-noise characteristics for training and validation. For certain training and validation tasks we amplify or attenuate the noise by multiplying it with a quantity we call the \textit{noise level}.
+
+The denoiser model is trained on noisy spectra where the noise is generated on-the-fly, meaning that at each epoch, a new noisy realization of each spectrum is created, rather than using a fixed precomputed noisy array. The same was done for the validation set, whereas the for the held-out test set, we use a fixed noise realization so that all methods are compared on the same noise realization.
+
+The same validation split is used for hyperparameter tuning and the training-time validation rule for the blindspot model. The test split of $10{,}000$ spectra is held out for final evaluation of the denoiser and to test the downstream $\log g$ calibrator, as well as to calculate the reconstruction RMSE and the relative equivalent width errors of the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band, see Sec.~\ld{XX}.
+
+\ld{What is gamma predictor??? All hyperparameter selection --- the training-time validation rule for the blindspot model, the classical-baseline grids in Appendix~\ref{app:controls_gamma}, and the model-free $\gamma$ predictors --- uses the validation split alone, with a single fixed validation noise seed.} After selection, the hyperparameters are held fixed, and the reconstruction and line-preservation results are computed on the reconstruction test split of $10{,}000$ spectra with one noise realization per spectrum. Reported intervals for the Ca\,\textsc{ii} equivalent-width rows are paired-bootstrap intervals over test spectra.
+
+\ld{this is not true anymore, I used mag205\_225\_lowT\_1M/train\_200k\_0 for the plots, so review:} The downstream $\log g$ calibrator uses a separate labeled BOSZ pool of $50{,}000$ spectra. Calibrator training uses $30{,}000$ clean spectra; the fitted model is then evaluated without refitting on a disjoint $5{,}000$-spectrum test partition represented in four ways: clean reference, blindspot output, noisy input, and a Savitzky--Golay smoother. The blindspot-vs-noisy confidence intervals in Table~\ref{tab:downstream_logg} are paired-bootstrap intervals over $1000$ resamples of that $5{,}000$-spectrum downstream test partition.
+
 \subsection{Training}
+\label{sec:training}
 The denoiser network we train consists of a single U-Net backbone $U_{\m{\theta}}$ with four input channels for feature extraction and and a prediction head of convolutional layers. The backbone has 9 convolutional layers with a kernel size of $25$ and a total number of 48 kernels. The input channels to the U-Net are the left and right shifted causal branches with proper padding and the two channels of constant vectors filled with the scalar noise parameter $\bar{\sigma}$. The U-Net backbone has an output of 2 times 48 channels, the $\m{u}^{L}$ and $\m{u}^{R}$ feature vectors, which are concatenated into a single channel by the prediction head. 
 %In the U-Net backbone, we use batch normalization and \ld{residual aggregation between matching encoder and decoder levels}.
 In the U-Net backbone, each decoder level upsamples the coarse feature map, concatenates it with the corresponding encoder feature map through a standard skip connection, and applies two batch-normalized 1D convolutional blocks.
@@ -515,26 +536,33 @@ The detailed training procedure is as follows:
 
 We train the blindspot denoiser in two configurations: one with a single-channel input for the noisy flux only, and one with a two-channel input for the noisy flux and the constant $\bar{\sigma}$ vector which is just a summary of the per-pixel variance vector. While the difference in performance is not significant, including the noise parameter as an additional input slightly help with reconstruction, see Sec.~\ld{XX}.
 
+\subsection{Baseline Models for Comparison}
+\label{sec:baseline_models}
+
+To establish a baseline for the blindspot denoiser, we compare it to three reference methods.
+
+The first baseline model is a classic PCA-based denoiser that uses a clean reference library to learn a low-dimensional linear subspace of the simulated spectra in which the majority of the variance of the clean spectra is captured. The noisy input spectra are then projected onto this subspace to obtain a denoised reconstruction. To test the overall denoising capabilities of the PCA-based method, we set the number of principal components to just $k=16$, which captures more than $99\%$ of the variance in the clean spectra but is known to be insufficient to capture the full complexity of stellar absorption features -- \ld{CITE}.
+
+The second benchmark is a Savitzky--Golay smoothing filter applied directly to the noisy spectra. Savitzky--Golay smoothing is a classical signal-processing technique that fits a low-degree polynomial to the values of the input signal in a moving window, and replaces the center point with the value of the fitted polynomial. For our particular application, we used a Savitzky--Golay filter with a window size of \ld{$11$} and a polynomial order of \ld{$3$}. \ld{-- verify the numbers}
+
+The third benchmark is a supervised U-Net denoising autoencoder that is trained on paired noisy-clean spectra, similar to the method of \citet{Pal2024_denoising_autoencoder}, except using a different network architecture where the output does not have the blindspot constraint on the receptive field and can use the full noisy spectrum as input, including the observed value of each pixel, to predict the noiseless pixel values.
+
 \subsection{Metrics for Performance Evaluation}
 \label{sec:metrics}
 
-We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the \mbox{O$_2$} A-band, as well as the performance of a $\log g$ regressor applied to the denoised spectra. The first metric is a standard measure of reconstruction quality, while the latter two are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
-
-\ld{In addition to the per-spectrum metrics}, we also report the mean and $95\%$ confidence intervals of these metrics over the test set of simulated spectra. The confidence intervals are calculated using the bootstrap method with $1000$ resamples of the test set.
-
-\ld{??? All metrics reported in Section~\ref{sec:results} use one validation-selected model and one metric definition per column. Per-spectrum metrics are averaged across spectra within each test-set noise realization and then across realizations; reported $\pm$ values are $95\%$ confidence intervals over the realizations in Table~\ref{tab:data_summary}.}
-
-\ld{Write about noise realizations}
+We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the \mbox{O$_2$} A-band absorption, as well as the performance of a $\log g$ regressor applied to the denoised spectra. The first metric is a standard measure of reconstruction quality, while the latter are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
 
 \paragraph{Reconstruction error}
-Since in case of simulated spectra, we know the clean reference, as well as the noise variance as a function of wavelength, we use the usual definition of the RMSE to compare the quality of the denoised spectrum to the original and the clean reference spectrum:
+Since, in case of simulated spectra, we know the clean reference, as well as the noise variance as a function of wavelength, we use the usual definition of the RMSE to compare the quality of the denoised spectrum to the original and the clean reference spectrum:
 \begin{equation}
     \mathrm{RMSE}(z)
     =
     \frac{\lVert \m{z} - \m{x} \rVert_{2}}{\sqrt{N}},
     \label{eq:rmse_def}
 \end{equation}
-where $z$ can be the noisy input $y$ or the denoised output $\hat{x}$, and $N$ is the number of wavelength bins in the spectrum. We note, however, that the \ld{uncertainty of the denoised flux could be calculate from the input variance because the denoiser network is differentiable with respect to the input. Alternatively, the uncertainty could be estimated empirically by evaluating the denoiser on multiple noise realizations of the same underlying clean spectrum.}
+where $z$ can be the noisy input $y$ or the denoised output $\hat{x}$, and $N$ is the number of wavelength bins in the spectrum.
+
+As a side note, we mention that the uncertainty of the denoised flux could be calculated from the variance of the input flux because the denoiser network is differentiable with respect to the input. Alternatively, the uncertainty could be estimated empirically by evaluating the denoiser on multiple noise realizations of the same underlying clean spectrum. \ld{-- why don't we try?}
 
 \paragraph{Equivalent width}
 % Since we work with continuum-normalized synthetic spectra, the definition of absorption-line equivalent width (EW) is simply
@@ -546,16 +574,25 @@ where $z$ can be the noisy input $y$ or the denoised output $\hat{x}$, and $N$ i
 % where $z$ can be the clean reference $x$, the noisy input $y$, or the denoised output $\hat{x}$, whereas $[\lambda_{1},\lambda_{2}]$ is a wavelength interval centered on a line and $d\lambda_i$ is the wavelength bin size. Note, that we work with continuum-normalized spectra, so the equivalent width is measured in units of wavelength.
 %
 We use the usual definition of equivalent width with locally-fitted linear continua around each absorption line in the form of
+% \begin{equation}
+%     \mathrm{EW}[z;\lambda_{1},\lambda_{2}]
+%     :=
+%     \int_{\lambda_{1}}^{\lambda_{2}}
+%     \left(
+%         1-\frac{z(\lambda)}{c_{z}(\lambda)}
+%     \right)\,d\lambda,
+%     \label{eq:equivalent_width}
+% \end{equation}
 \begin{equation}
-    \mathrm{EW}[z;\lambda_{1},\lambda_{2}]
-    :=
-    \int_{\lambda_{1}}^{\lambda_{2}}
+    \mathrm{EW}(z;\lambda_{1},\lambda_{2})
+    =
+    \sum_{i = \lambda_{1}}^{\lambda_{2}}
     \left(
-        1-\frac{z(\lambda)}{c_{z}(\lambda)}
-    \right)\,d\lambda,
+        \frac{c_i - z_i}{c_{i}}
+    \right)\,d\lambda_i,
     \label{eq:equivalent_width}
 \end{equation}
-where $z$ can be the clean reference $x$, the noisy input $y$, or the denoised output $\hat{x}$, whereas $[\lambda_{1},\lambda_{2}]$ is a wavelength interval centered on a line and $d\lambda_i$ is the wavelength bin size. The denominator $c_{z}(\lambda)$ is the linear continuum.
+where $z_\lambda$ can be the clean reference $x_\lambda$, the noisy input $y_\lambda$, or the denoised output $\hat{x}_\lambda$, whereas $[\lambda_{1},\lambda_{2}]$ is a wavelength interval centered on a line and $d\lambda_i$ is the wavelength bin size. The denominator $c_\lambda$ is the linear continuum.
 %
 % Equivalent width is computed in continuum-normalized flux units. In this simulated experiment, $x$, $y$, and $\hat{x}$ are all evaluated after normalization by the same noiseless-template continuum $C(\lambda)$ used in the simulator; no upper-envelope spline is fit separately to the noisy input or to the denoised output. For this subsection, let $z(\lambda)$ denote one of the continuum-normalized spectra $x(\lambda)$, $y(\lambda)$, or $\hat{x}(\lambda)$ whose line measurement is being evaluated. For a wavelength interval $[\lambda_{1},\lambda_{2}]$ centered on a line, define
 % where $c_{z}(\lambda)$ is the continuum associated with $z$. Because we simulate normalized spectra, $c_{z}(\lambda)=1$ in the implementation and
@@ -588,14 +625,14 @@ The wings of the Ca\,\textsc{ii} lines are tracers of stellar surface gravity.
 
 Surface gravity measurement is a key step in target selection for Galactic Archeology when targeting distant giant stars is the goal and foreground dwarf contamination must be removed. Surface gravity measurement is difficult from low-$\SNR$ spectra, so a denoiser that preserves the line shapes could be useful to detect mis-targeted stars early on into the observations from a few short, noisy exposures. Identifying wrong targets early, and repositioning the fibers could help avoid wasting valuable telescope time on less interesting targets.
 
-A pixel-level reconstruction gain is useful for Galactic Archaeology only if the denoised spectrum conveys enough information to a downstream estimator to make more accurate predictions from a denoised spectrum than from a noisy one. We, therefore, test the denoiser in a $\log g$ estimation task, where the goal is to predict the surface gravity of a star from its spectrum.
+On the other hand, a pixel-level reconstruction gain is useful for Galactic Archaeology only if the denoised spectrum conveys enough information to a downstream estimator to make more accurate predictions from the denoised spectrum than from the noisy one. We, therefore, test the denoiser in a $\log g$ estimation task, where the goal is to predict the surface gravity of a star from its spectrum.
 
 % LightGBM paper:
 % https://www.microsoft.com/en-us/research/wp-content/uploads/2017/11/lightgbm.pdf?msockid=1d869ab6dfab6add27cf8dcdde126b49
 
-We train a PCA + LightGBM \citep{2017Ke_LightGBM} model, a classical decision tree regressor that uses gradient boosting to handle non-linear relationships between the input features and the target variable. A PCA with $k=200$ is used to extract features from the spectra combined with the LightGBM model for regression. The LightGBM model is trained to predict $\log g$ from the entire wavelength range of the simulated spectra. To avoid overfitting, the $\log g$ training is done on almost clean spectra, with the noise multiplied by $10^{-3}$ and evaluated on the same test spectra with different noise levels, without re-training, as it is plotted in Fig.~\ref{fig:lightgbm}. While the model performs fairly well on almost clean spectra, its performance degrades as the noise level increases, highlighting the challenge of $\log g$ estimation from noisy spectra.
+We project the spectra to a $k=200$ PCA basis to extract features and apply the LightGBM \citep{2017Ke_LightGBM} model, a classical decision tree regressor that uses gradient boosting, to learn non-linear relationships between the input features and the target variable. The LightGBM model is trained to predict $\log g$ from the entire wavelength range of the simulated spectra. To avoid overfitting, the $\log g$ training is done on almost clean spectra, with the noise multiplied by $10^{-3}$ compared to the realistic simulations. The performance of LightGBM is evaluated on the same test spectra as the blindspot denoiser; with different noise levels, without re-training, as it is plotted in Fig.~\ref{fig:lightgbm}. While the model performs fairly well on almost clean spectra, its performance degrades quickly as the level of noise increases, highlighting the challenge of $\log g$ estimation from noisy spectra.
 
-The coefficient of determination $R^2$ measures the proportion of variance in the true $\log g$ values that is explained by the predicted values. It is defined as
+To measure the goodness of parameter prediction, we use the coefficient of determination $R^2$, which measures the proportion of variance in the true $\log g$ values that is explained by the predicted values. It is defined as
 \begin{equation}
     R^2 = 1 - \frac{\sum_{i=1}^{N} (x_i - \hat{x}_i)^2}{\sum_{i=1}^{N} (x_i - \bar{x})^2},
 \end{equation}
@@ -611,67 +648,51 @@ where $x_i$ is the true value, $\hat{x}_i$ is the predicted value, $\bar{x}$ is 
 
 % For our $\log g$ estimator, we use a LightGBM model,  The LightGBM model is trained to predict $\log g$ from clean spectra. The $log~g$ estimator is then evaluated on noisy and different denoised versions of the test spectra, and the performance is measured using the coefficient of determination $R^2$ and the mean absolute error (MAE) between the predicted and true $\log g$ values, see Table~\ref{tab:downstream_logg}.
 
-\subsection{Baseline Models for Comparison}
-\label{sec:baseline_models}
-
-\ld{To establish a baseline for the blindspot denoiser, we compare it to two reference methods. The first is a classic PCA-based denoiser that uses a clean reference library to learn a low-dimensional linear subspace of spectra. The second is a supervised U-Net denoising autoencoder that is trained on paired noisy-clean spectra, not unlike the method of \citet{Pal2024_denoising_autoencoder}, except using a different network architecture.}
-
-\ld{The classic PCA-based denoiser is trained on a library of clean spectra to learn a low-dimensional linear subspace in which the majority of the variance of the clean spectra is captured. The noisy input spectra are then projected onto this subspace to obtain a denoised reconstruction. To test the overall denoising capabilities of the PCA-based method, we set the number of principal components to just $k=16$, which captures more than $99\%$ of the variance in the clean spectra but is known to be insufficient to capture the full complexity of stellar absorption features -- NEEDS REFERENCE.}
-
-\ld{The supervised U-Net denoising autoencoder is trained on paired noisy-clean spectra, where the clean spectra serve as the target for the network to learn to reconstruct from the noisy input. The architecture of the supervised U-Net is similar to that of the blindspot model, but it does not have the blindspot constraint on the receptive field and can use the full noisy spectrum as input, including the observed value of each pixel, to predict the noiseless pixel values.}
-
-\ld{We also applied to the noisy spectra a Savitzky--Golay smoothing filter, a classical signal-processing technique that fits a low-degree polynomial to a moving window of the input signal and replaces the center point with the value of the fitted polynomial. For our particular application, we used a Savitzky--Golay filter with a window size of ...}
-
-\subsection{Training Data Sets}
-
-% Exact model hyperparameters, evaluation-contract details, and validation-tuning rules for the non-neural reference methods are collected in Appendices~\ref{app:contract}--\ref{app:controls_gamma}.
-
-To train the denoiser model, the training, validation, and test sets contain $200{,}000$, $1{,}000$, and $10{,}000$ spectra respectively, drawn without replacement from the same library of simulated spectra. The marginal distributions of $T_{\rm eff}$, $\log g$, $[\mathrm{M}/\mathrm{H}]$, and magnitude match across the training data splits.
-
-The same validation split was used for hyperparameter tuning, the training-time validation rule for the blindspot model and \ld{gamma predictor???}. The test split of $10{,}000$ spectra was held out for final evaluation of the denoiser and the downstream $\log g$ calibrator, as well as to calculate the reconstruction RMSE and the relative equivalent width error of the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band. The test split was evaluated with a single noise realization per spectrum, \ld{verify this claim: while the training and validation splits were evaluated with multiple noise realizations to ensure that the model learned to denoise spectra with different noise levels.}
-
-\ld{What is gamma predictor??? All hyperparameter selection --- the training-time validation rule for the blindspot model, the classical-baseline grids in Appendix~\ref{app:controls_gamma}, and the model-free $\gamma$ predictors --- uses the validation split alone, with a single fixed validation noise seed.} After selection, the hyperparameters are held fixed, and the reconstruction and line-preservation results are computed on the reconstruction test split of $10{,}000$ spectra with one noise realization per spectrum. Reported intervals for the Ca\,\textsc{ii} equivalent-width rows are paired-bootstrap intervals over test spectra.
-
-\ld{review:} The downstream $\log g$ calibrator uses a separate labeled BOSZ pool of $50{,}000$ spectra. Calibrator training uses $30{,}000$ clean spectra; the fitted model is then evaluated without refitting on a disjoint $5{,}000$-spectrum test partition represented in four ways: clean reference, blindspot output, noisy input, and a Savitzky--Golay smoother. The blindspot-vs-noisy confidence intervals in Table~\ref{tab:downstream_logg} are paired-bootstrap intervals over $1000$ resamples of that $5{,}000$-spectrum downstream test partition.
-
-\ld{review:} Training / validation noise: the noise for training and validation is generated within the pipeline rather than read from a precomputed noisy array. For the held-out test comparison, we use a fixed stored noisy realization so that all methods are compared on the same noise.
-
 \section{Results}
 \label{sec:results}
 
-In this section, we present the results of the blindspot denoiser on the test spectra. We evaluate the reconstruction performance, the preservation of astrophysically relevant features, and the $\log g$ calibration task. Evaluation of the machine learning models was done using the held-out test set of \ld{$10{,}000$} spectra with a single noise realization per spectrum using the same random seed for each method.
+In this section, we present the results of the blindspot denoiser and on the test spectra and compare them to the results from the baseline models. We evaluate the reconstruction performance, the preservation of astrophysically relevant features, and the $\log g$ calibration task. Evaluation of the machine learning models was done using the held-out test set of \ld{$10{,}000$} spectra with a single noise realization per spectrum using the same random seed for each method to generate the noise.
 
-\subsection{Denoising Performance}
+\ld{??? All metrics reported in Section~\ref{sec:results} use one validation-selected model and one metric definition per column. Per-spectrum metrics are averaged across spectra within each test-set noise realization and then across realizations; reported $\pm$ values are $95\%$ confidence intervals over the realizations in Table~\ref{tab:data_summary}.}
+
+\subsection{Reconstruction Performance}
 \label{sec:results_denoising}
 
-To measure the overall performance of the denoiser, first we compute the reconstruction RMSE of the denoised spectra against the clean reference over the entire wavelength range for each spectrum. \ld{We need a histogram plot.} Then the mean, the median and the 5 and 95 percentiles of the per spectrum RMSE is taken over the test set. The results are summarized in Table~\ref{tab:main_baselines} where we compare the performance of the blindspot denoiser to baseline methods, including the noisy input, a PCA-based denoiser, and a supervised U-Net denoiser.
+To measure the overall performance of the denoiser, first we compute the reconstruction RMSE of the denoised spectra against the clean reference over the entire wavelength range for each spectrum. Then the mean, the median and the 5 and 95 percentiles of the per spectrum RMSE is taken over the test set. The results are summarized in Table~\ref{tab:main_baselines} where we compare the performance of the blindspot denoiser to the baseline methods, including the noisy input, a PCA-based denoiser, and a supervised U-Net denoiser.
+
+\begin{table*}
+\begin{center}
+\begin{tabular}{ll*{4}{>{\centering\arraybackslash}p{2.0cm}}}
+\hline
+Denoising model & Training method & {Mean} & {Median} & {$5$-percentile} & {$95$-percentile} \\
+       &                & RMSE   & RMSE & RMSE & RMSE \\
+\hline
+Noisy input & -- &
+    0.0843\phantom{0} & 0.0736\phantom{0} & 0.0343\phantom{0} & 0.164\phantom{00} \\
+PCA, $k\!=\!16$ & clean reference &
+    0.0106\phantom{0} & 0.00949 & 0.00542 & 0.0184\phantom{0} \\
+Blindspot, no $\bar{\sigma}$ & self-supervised &
+    0.00554 & 0.00478 & 0.00210 & 0.0115\phantom{0} \\
+Blindspot $+$ $\bar{\sigma}$ & self-supervised &
+    0.00533 & 0.00460 & 0.00204 & 0.0111\phantom{0} \\
+Supervised U-Net & clean reference &
+    0.00428 & 0.00368 & 0.00157 & 0.00907 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{
+    \ld{Add Savitzky--Golay smoothing?}
+    Performance of the various denoising techniques on the test set, measured as the RMSE with respect to the clean reference spectra. The values are reported as the mean, median, $5$-percentile, and $95$-percentile of the per-spectrum RMSE over the $10{,}000$ test spectra. See the text for discussion.
+    % Test-set reconstruction quality on $10{,}000$ test spectra, reported as the per-spectrum root-mean-square reconstruction error $\mathrm{RMSE}=\lVert x-z\rVert_{2}/\sqrt{N}$ against the clean reference (smaller is better; mean and median over spectra). Rows group the observed input, a validation-tuned clean-template PCA reference, the self-supervised blindspot with and without the scalar noise condition $\bar{\sigma}$, and a supervised clean-target reference. The clean-template PCA and supervised U-Net rows are fit with access to clean spectra and are not deployable comparisons; they bound the linear estimator class and the paired-data ceiling respectively. Baseline tuning grids and the noisy-trained PCA are listed in Appendix~\ref{app:controls_gamma}; the central-visible copy-shortcut control is in Appendix~\ref{app:architecture_integrity}.
+}
+\label{tab:main_baselines}
+\end{table*}
+
+\ld{In addition to the per-spectrum metrics}, we also report the mean and $95\%$ confidence intervals of these metrics over the test set of simulated spectra. The confidence intervals are calculated using the bootstrap method with $1000$ resamples of the test set.
 
 On the test data set, mean per-spectrum reconstruction RMSE falls from \ld{$0.084$} on the noisy input to \ld{$0.0053$} on the blindspot output: an improvement of a factor of about $16$. As comparison, the PCA-based denoiser achieves a mean RMSE of \ld{$0.0106$}, an improvement of a factor of about $8$ over the noisy input, whereas the supervised U-Net denoiser achieves a mean RMSE of \ld{$0.0043$}, an improvement of a factor of about $20$ over the noisy input. We note, however, that both the PCA denoised and the supervised U-Net method were trained on clean spectra.
 
 \ld{review:} Figure~\ref{fig:representative_spectrum} shows one faint spectrum where the input drowns the Ca\,\textsc{ii} triplet and the output follows the line cores. The canonical reconstruction test split contains $10{,}000$ spectra with a single noise realization per spectrum and no clean reference at training time (Appendix~\ref{app:contract}).
-
-\begin{table*}
-\centering
-\begin{tabular}{llllll}
-\hline
-Method & Reference type & {Mean} & {Median} & {$5$-percentile} & {$95$-percentile} \\
-       &                & \multicolumn{4}{c}{RMSE} \\
-\hline
-Noisy input & observed input &
-    0.0843\phantom{0} & 0.0736\phantom{0} & 0.0343\phantom{0} & 0.164\phantom{00} \\
-PCA, $k\!=\!16$ (clean-template) & clean reference &
-    0.0106\phantom{0} & 0.00949 & 0.00542 & 0.0184\phantom{0} \\
-Blindspot, no $\bar{\sigma}$ & self-supervised &
-    0.00554 & 0.00478 & 0.00210 & 0.0115\phantom{0} \\
-\textbf{Blindspot $+$ $\bar{\sigma}$} & \textbf{self-supervised} &
-    0.00533 & 0.00460 & 0.00204 & 0.0111\phantom{0} \\
-Supervised U-Net & clean-target ceiling &
-    0.00428 & 0.00368 & 0.00157 & 0.00907 \\
-\hline
-\end{tabular}
-\caption{Test-set reconstruction quality on $10{,}000$ test spectra, reported as the per-spectrum root-mean-square reconstruction error $\mathrm{RMSE}=\lVert x-z\rVert_{2}/\sqrt{N}$ against the clean reference (smaller is better; mean and median over spectra). Rows group the observed input, a validation-tuned clean-template PCA reference, the self-supervised blindspot with and without the scalar noise condition $\bar{\sigma}$, and a supervised clean-target reference. The clean-template PCA and supervised U-Net rows are fit with access to clean spectra and are not deployable comparisons; they bound the linear estimator class and the paired-data ceiling respectively. Baseline tuning grids and the noisy-trained PCA are listed in Appendix~\ref{app:controls_gamma}; the central-visible copy-shortcut control is in Appendix~\ref{app:architecture_integrity}.}
-\label{tab:main_baselines}
-\end{table*}
 
 \begin{figure}
 \includegraphics{figs/fig_rmse_hist_linear_overlay.pdf}
