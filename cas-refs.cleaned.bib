@@ -977,3 +977,54 @@ archivePrefix = {arXiv},
   year         = {2007},
   doi          = {10.1086/521425}
 }
+
+@ARTICLE{Gebran2025_denoising,
+       author = {{Gebran}, Marwan and {Bentley}, Ian and {Brienza}, Rose and {Paletou}, Fr{\'e}d{\'e}ric},
+        title = "{Deep learning application for stellar parameter determination: III-denoising procedure}",
+      journal = {Open Astronomy},
+     keywords = {data analysis, statistical, deep learning, autoencoders, techniques: spectroscopic, noise, stars: fundamental parameters, Astrophysics - Solar and Stellar Astrophysics, Astrophysics - Astrophysics of Galaxies, Astrophysics - Instrumentation and Methods for Astrophysics, Physics - Computational Physics},
+         year = 2025,
+        month = jan,
+       volume = {34},
+       number = {1},
+          eid = {20240010},
+        pages = {20240010},
+          doi = {10.1515/astro-2024-0010},
+archivePrefix = {arXiv},
+       eprint = {2412.04631},
+ primaryClass = {astro-ph.SR},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2025OAst...3440010G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{2023Ketn_,
+       author = {{Kent}, David and {Budav{\'a}ri}, Tam{\'a}s and {Loredo}, Thomas J. and {Ruppert}, David},
+        title = "{Splines 'n Lines: Rest-frame galaxy spectral energy distributions via Bayesian functional data analysis}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Statistics - Applications},
+         year = 2023,
+        month = oct,
+          eid = {arXiv:2310.19340},
+        pages = {arXiv:2310.19340},
+          doi = {10.48550/arXiv.2310.19340},
+archivePrefix = {arXiv},
+       eprint = {2310.19340},
+ primaryClass = {astro-ph.IM},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv231019340K},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@inproceedings{2017Ke_LightGBM,
+author = {Ke, Guolin and Meng, Qi and Finley, Thomas and Wang, Taifeng and Chen, Wei and Ma, Weidong and Ye, Qiwei and Liu, Tie-Yan},
+title = {LightGBM: a highly efficient gradient boosting decision tree},
+year = {2017},
+isbn = {9781510860964},
+publisher = {Curran Associates Inc.},
+address = {Red Hook, NY, USA},
+abstract = {Gradient Boosting Decision Tree (GBDT) is a popular machine learning algorithm, and has quite a few effective implementations such as XGBoost and pGBRT. Although many engineering optimizations have been adopted in these implementations, the efficiency and scalability are still unsatisfactory when the feature dimension is high and data size is large. A major reason is that for each feature, they need to scan all the data instances to estimate the information gain of all possible split points, which is very time consuming. To tackle this problem, we propose two novel techniques: Gradient-based One-Side Sampling (GOSS) and Exclusive Feature Bundling (EFB). With GOSS, we exclude a significant proportion of data instances with small gradients, and only use the rest to estimate the information gain. We prove that, since the data instances with larger gradients play a more important role in the computation of information gain, GOSS can obtain quite accurate estimation of the information gain with a much smaller data size. With EFB, we bundle mutually exclusive features (i.e., they rarely take nonzero values simultaneously), to reduce the number of features. We prove that finding the optimal bundling of exclusive features is NP-hard, but a greedy algorithm can achieve quite good approximation ratio (and thus can effectively reduce the number of features without hurting the accuracy of split point determination by much). We call our new GBDT implementation with GOSS and EFB LightGBM. Our experiments on multiple public datasets show that, LightGBM speeds up the training process of conventional GBDT by up to over 20 times while achieving almost the same accuracy.},
+booktitle = {Proceedings of the 31st International Conference on Neural Information Processing Systems},
+pages = {3149-3157},
+numpages = {9},
+location = {Long Beach, California, USA},
+series = {NIPS'17}
+}
