@@ -7,9 +7,6 @@
 # 实现：先 ignore everything, 然后 whitelist 当前 paper 实际用到的 figs。
 # 加新 figure 时显式写到 whitelist；不加 whitelist 则被 git 忽略。
 
-# Default: ignore everything (incl. dotfiles like .DS_Store, .ipynb_checkpoints)
-*
-
 # Whitelist (tracked figs actually included by paper main.tex / sections)
 !.gitignore
 !appendix/

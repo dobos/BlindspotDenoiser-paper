@@ -107,7 +107,7 @@
 \email[show]{xzhao113@jhu.edu}
 
 \begin{abstract}
-Analyzing stellar spectra observed at low signal-to-noise ratios ($\SNR$) is unavoidable when survey targets are faint. Absorption line measurements that are essential to determine the stellar parameters and identify stellar types degrade first. We investigate weather sophisticated neural-network-based denoisers can help mitigate this. Real surveys provide no paired clean references for machine learning, so supervised denoisers inherit a simulator-to-deployment dependency. Although we still use simulated spectra, we train a one-dimensional, convolutional, self-supervised blindspot denoiser on noisy spectra alone, without using the clean reference during training or validation. Our blindspot network can predict the flux in every wavelength bin from a receptive field that excludes that particular wavelength bin from the input. With heteroscedastic noise, the mean, per-spectrum reconstruction error (RMSE) falls by about a factor of \ld{$16$} from the noisy input to the blindspot output. The uncertainty of equivalent widths of absorption features decrease by a factor of \ld{$XX$}. To test whether this gain carries downstream information relevant for Galactic Archeology surveys, we apply classical machine learning models trained on clean synthetic spectra to predict the athmospheric parameters.
+Analyzing stellar spectra observed at low signal-to-noise ratios ($\SNR$) is unavoidable when survey targets are faint. Absorption line measurements that are essential to determine the stellar parameters and identify stellar types degrade first. We investigate weather sophisticated neural-network-based denoisers can help mitigate this. Real surveys provide no paired clean references for machine learning, so supervised denoisers inherit a simulator-to-deployment dependency. Although we still use simulated spectra, we train a one-dimensional, convolutional, self-supervised blindspot denoiser on noisy spectra alone, without using the clean reference during training or validation. Our blindspot network can predict the flux in every wavelength bin from a receptive field that excludes that particular wavelength bin from the input. With heteroscedastic noise, the mean, per-spectrum reconstruction error (RMSE) falls by about a factor of \ld{$16$} from the noisy input to the blindspot output. The uncertainty of equivalent widths (EWs) of absorption features decrease by a factor of \ld{$XX$}. To test whether this gain carries downstream information relevant for Galactic Archeology surveys, we apply classical machine learning models trained on clean synthetic spectra to predict the athmospheric parameters.
 %\ld{The test set residual scatter falls from \ld{$1.26$} on noisy input to $0.80$~dex on the denoised output. As a comparison, validation-tuned classical smoothers stay at the noisy-input scale. This downstream test probes the information used for dwarf--giant  target classification, paramount in Galactic Archaeology, indicating that the self-supervised blindspot method recovers real information from the spectrum and denoised spectra are usable as input to traditional parameter estimation methods rather than only pixel-level reconstructions.}
 The source code of the blindspot denoiser is publicly available on Github\footnote{\url{https://github.com/ViskaWei/BlindSpotDenoiser}}.
 \end{abstract}
@@ -137,7 +137,8 @@ Our contributions are:
 \begin{itemize}
     \item We implementated a one-dimensional, self-supervised blindspot denoiser for low-$\SNR$ stellar spectra, trained from noisy spectra only and evaluated against clean references only after training.
     \item We generated simulated observations for training, validation and test data sets consisting of BOSZ \citep{Bohlin2017} spectra at a resolution of $R \approx 5000$ in the wavelength range of $7100$--$8850$~\AA and an apparent magnitude range of $20.5$--$22.5$. We used stellar parameters typical to late-type stars which are of the primary interest of Galactic Archaeology, and simulated a line spread function and noise characteristics similar to the Subaru Prime Focus Spectrograph (PFS) instrument.
-    \item We performed line-preservation diagnostics by measuring the reconstruction error of the Ca\,\textsc{ii} triplet equivalent-width (EW) and an \mbox{O$_2$} A-band test in a high-noise atmospheric window and demonstrated that the denoise can significantly reduce the error of EW measurements.
+    \item We performed line preservation diagnostics by measuring the reconstruction error of the Ca\,\textsc{ii} triplet equivalent widths and demonstrated that the denoiser can significantly reduce the error of EW measurements of broad absorption features.
+    \item We performed flux conservation diagnostics by measuring the reconstruction error of the total EW of stellar atmospheric absorption in the Oxygen A-band, a region dominated by telluric absorption causing high noise in the flux-calibrated spectra.
     \item {Write about information theory limit and introduced bias that counteracts the smaller reconstruction error}
     % \item We demonstated that a full-spectrum model trained on clean spectra to predict $\log g$ performs substantially better on blindspot-denoised spectra than on noisy or validation-tuned smoothed spectra, also improving dwarf--giant separation in faint Galactic Archaeology samples. Relative to the noisy input, the coefficient of determination rises from $0.01$ to $0.46$.
     \item \ld{review} We compared the performance of the blindspot denoiser against validation-tuned classical denoising filters, a denoiser based on principal-component analysis (PCA) using noisy input spectra and a non-deployable clean-template PCA reference, using aggregate reconstruction error (RMSE) as measure of performance.
@@ -550,7 +551,7 @@ The third benchmark is a supervised U-Net denoising autoencoder that is trained 
 \subsection{Metrics for Performance Evaluation}
 \label{sec:metrics}
 
-We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the \mbox{O$_2$} A-band absorption, as well as the performance of a $\log g$ regressor applied to the denoised spectra. The first metric is a standard measure of reconstruction quality, while the latter are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
+We use three metrics to evaluate the performance of the denoiser: the reconstruction RMSE, the relative equivalent width error of the Ca\,\textsc{ii} triplet lines, and the relative equivalent width error of the total stellar atmospheric absorption in the \mbox{O$_2$} A-band, as well as the performance of a $\log g$ regressor applied to the denoised spectra. The first metric is a standard measure of reconstruction quality, while the latter are physically motivated metrics that measure how well the denoiser preserves astrophysically relevant features in the spectra.
 
 \paragraph{Reconstruction error}
 Since, in case of simulated spectra, we know the clean reference, as well as the noise variance as a function of wavelength, we use the usual definition of the RMSE to compare the quality of the denoised spectrum to the original and the clean reference spectrum:
@@ -618,7 +619,8 @@ The absorption features we tested are the following.
 \item Ca\,\textsc{ii} triplet: We measure the total EW of the three wavelength intervals with widths of $12$~\AA\, centered on the three Ca\,\textsc{ii} lines at \ld{$8498$, $8542$, and $8662$}~\AA. The continuum is estimated as a linear function connecting the mean flux values in wavelength windows of $12$~\AA\, on either side of each line.
 % Equation~\ref{eq:ew_relative_error} on $\mathcal{W}_{c}=\{\lambda:|\lambda-c|\leq6\,\text{\AA}\}$ for $c\in\{8498,8542,8662\}$~\AA. For each line we report the median over spectra. The ``triplet mean'' is the arithmetic mean of those three per-line medians, $\epsilon_{\mathrm{EW}}^{\mathrm{CaT}}=\tfrac{1}{3}\sum_{c\in\{8498,8542,8662\}}\operatorname{median}_{s}\,\epsilon_{\mathrm{EW}}(z_s;\mathcal{W}_{c})$.
 The wings of the Ca\,\textsc{ii} lines are tracers of stellar surface gravity.
-\item O$_2$~A-band: We measure the total equivalent width of absorption features overlapping with the telluric O$_2$~A-band, which is a strong atmospheric absorption feature in the wavelength range $7590$--$7700$~\AA. In this wavelength interval, sky-background and atmospheric-throughput dominate the noise budget. The diagnostic therefore tests whether the blindspot model can interpolate a high-noise atmospheric window under the independent, zero-mean simulator noise model. It should not be read as evidence, however, that correlated real telluric or sky-subtraction residuals can be removed without additional modeling.
+\item \ld{Add TiO?}
+\item O$_2$~A-band: We measure the total equivalent width of stellar atmospheric absorption in the Oxygen A-band, which is a strong atmospheric absorption feature in the wavelength range $7590$--$7700$~\AA caused by telluric O$_2$ molecules. In this wavelength interval, sky-background and atmospheric-throughput dominate the noise budget and it is an interesting question whether the stellar spectrum can be reconstructed or not. The diagnostic therefore tests whether the blindspot model can interpolate the flux in a high-noise wavelength interval under the independent, zero-mean simulator noise model. It should not be read as evidence, however, that correlated, real telluric or sky-subtraction residuals can be removed without additional modeling.
 \end{itemize}
 
 \subsection{Downstream $\log g$ Estimation}
@@ -640,7 +642,7 @@ where $x_i$ is the true value, $\hat{x}_i$ is the predicted value, $\bar{x}$ is 
 
 \begin{figure}
     \includegraphics{figs/fig_lightgbm.pdf}
-    \caption{Performance of the LightGBM $\log g$ estimator on test spectra with different noise levels. The $R^2$ score for each noise level is indicated in the plot. The model was trained on almost clean spectra with a noise level of $10^{-3}$.}
+    \caption{Performance of the LightGBM $\log g$ estimator on simulated spectra with different noise levels. The $R^2$ score for each noise level is indicated in the plot. The model was trained on almost clean spectra with a noise level of $10^{-3}$. No denoising was applied.}
     \label{fig:lightgbm}
 \end{figure}
 
@@ -658,7 +660,24 @@ In this section, we present the results of the blindspot denoiser and on the tes
 \subsection{Reconstruction Performance}
 \label{sec:results_denoising}
 
-To measure the overall performance of the denoiser, first we compute the reconstruction RMSE of the denoised spectra against the clean reference over the entire wavelength range for each spectrum. Then the mean, the median and the 5 and 95 percentiles of the per spectrum RMSE is taken over the test set. The results are summarized in Table~\ref{tab:main_baselines} where we compare the performance of the blindspot denoiser to the baseline methods, including the noisy input, a PCA-based denoiser, and a supervised U-Net denoiser.
+To measure the overall performance of the denoiser, first we compute the reconstruction RMSE of the denoised spectra against the clean reference over the entire wavelength range for each spectrum. Then the mean, the median and the 5 and 95 percentiles of the per spectrum RMSE are taken over the test set. The results are summarized in Tab.~\ref{tab:main_baselines} where we compare the performance of the blindspot denoiser to the baseline methods, including the noisy input, a PCA-based denoiser, and a supervised U-Net denoiser. In Fig.~\ref{fig:rmse_hist} we show the distribution of the per-spectrum RMSE for the noisy input and the blindspot denoiser output.
+
+From Fig.~\ref{fig:rmse_hist}, it is clear that the blindspot denoiser significantly reduces the reconstruction error compared to the original noisy input, but it is important to keep in mind, that the RMSE is calculate over the entire wavelength range, and most of the spectral pixels are continuum pixels, which are relatively easy to denoise. This is the precise reason why we also evaluate the denoiser on astrophysically relevant features, such equivalent widths of absorption lines.
+
+The ablation experiments identify which components contribute to the performance gains. In Tab.~\ref{tab:main_baselines}, we list the mean, median and percentiles of the per-spectrum RMSE calculated over the test data set of $10{,}000$ spectra. While PCA denoising is a simple, well-understood linear baseline, it is based entirely on clean reference spectra and the limited number of principal components \ld{Why don't we use more? I used $k=200$ to train the LightGBM for $\log g$.} is not sufficient to capture the full complexity of stellar absorption features. This is reflected in the RMSE of \ld{$0.0106$} for the PCA-based denoiser, which is more than twice the RMSE of the blindspot denoiser.
+
+The blindspot denoiser, which also gets $\bar{\sigma}$ as input, performs slightly better than the blindspot denoiser without $\bar{\sigma}$, but the difference is not significant. Including the scalar noise parameter $\bar{\sigma}$ in the blindspot model improves the mean RMSE from $0.0055$ to $0.0053$, indicating that the blindspot construction itself is the primary driver of the reconstruction performance, rather than any information about the variance of the noise.
+
+The supervised U-Net denoiser outperforms the blindspot denoiser, to no surprise, as it is a high learning capacity model that is trained on paired noisy-clean spectra. The clean reference spectra are seldom available in practice when surveys target stars near the detection limit.
+
+\begin{figure}
+% \includegraphics{figs/fig_rmse_hist_linear_overlay.pdf}
+\includegraphics{figs/fig_rmse_hist.pdf}
+\caption{
+    \ld{Verify numbers, Table~\ref{tab:data_summary} has different numbers!}
+    Distribution of the per-spectrum reconstruction error (RMSE) of the noisy input (black line) and the blindspot denoiser output (blue shaded area). The error was calculated with respect to the clean reference spectra.}
+\label{fig:rmse_hist}
+\end{figure}
 
 \begin{table*}
 \begin{center}
@@ -688,23 +707,16 @@ Supervised U-Net & clean reference &
 \label{tab:main_baselines}
 \end{table*}
 
-\ld{In addition to the per-spectrum metrics}, we also report the mean and $95\%$ confidence intervals of these metrics over the test set of simulated spectra. The confidence intervals are calculated using the bootstrap method with $1000$ resamples of the test set.
+\ld{In addition to the per-spectrum metrics -- I don't get it, aren't the number calculated for the test set? Or it's the test set 1000 times?}, we also report the mean and $95\%$ confidence intervals of these metrics over the test set of simulated spectra. The confidence intervals are calculated using the bootstrap method with $1000$ resamples of the test set.
 
 On the test data set, mean per-spectrum reconstruction RMSE falls from \ld{$0.084$} on the noisy input to \ld{$0.0053$} on the blindspot output: an improvement of a factor of about $16$. As comparison, the PCA-based denoiser achieves a mean RMSE of \ld{$0.0106$}, an improvement of a factor of about $8$ over the noisy input, whereas the supervised U-Net denoiser achieves a mean RMSE of \ld{$0.0043$}, an improvement of a factor of about $20$ over the noisy input. We note, however, that both the PCA denoised and the supervised U-Net method were trained on clean spectra.
 
-\ld{review:} Figure~\ref{fig:representative_spectrum} shows one faint spectrum where the input drowns the Ca\,\textsc{ii} triplet and the output follows the line cores. The canonical reconstruction test split contains $10{,}000$ spectra with a single noise realization per spectrum and no clean reference at training time (Appendix~\ref{app:contract}).
-
-\begin{figure}
-\includegraphics{figs/fig_rmse_hist_linear_overlay.pdf}
-\caption{
-    \ld{Range is wrong, Table~\ref{tab:data_summary} has different numbers!}
-    Distribution of the per-spectrum error (RMSE) of the noisy input (black line) and the blindspot denoiser output (blue shaded area). The error was calculated with respect to the clean reference spectra. \ld{reference from text}}
-\label{fig:rmse_hist}
-\end{figure}
+Figure~\ref{fig:representative_spectrum} shows how the blindspot denoiser performs on a single, low $\SNR$ spectrum from the faint end of the magnitude range. The spectral features are not recognizable by eye in the noisy input (gray dots), but the blindspot denoiser (dark blue line) is able to reconstruct the spectrum and recover the absorption features. For reference, we also plotted the clean reference spectrum (light blue line) and the residuals between the blindspot output and the clean reference (green dots in the lower panels). Unsurprisingly, residuals tend to be larger in the line cores than in the continuum, partly because the noise is larger in the line cores due to the Poisson error of the smaller flux, partly because the larger intrinsic variability of the lines that the denoiser network has to learn. The lower panel of Fig.~\ref{fig:representative_spectrum} emphasizes this by showing a zoom-in on the Ca\,\textsc{ii} triplet region, where the blindspot denoiser is able to recover the line cores and the overall shape of the absorption lines with a few per cent accuracy only, whereas continuum flux is recovered to sub-percent accuracy.
 
 \begin{figure*}
 \centering
-\includegraphics[width=0.95\textwidth]{figs/fig1_representative.pdf}
+% \includegraphics[width=0.95\textwidth]{figs/fig1_representative.pdf}
+\includegraphics{figs/fig_denoised_rel_error.pdf}
 \caption{
     Illustration of the effect of the blindspot denoiser on a single representative low-$\SNR$ simulated spectrum from the faint end of the magnitude range with a magnitude of $\mathrm{mag}=22.45$ and atmospheric parameters of $T_{\rm eff}=4750$~K, $\log g=2.0$, $[\mathrm{M}/\mathrm{H}]=-2.25$. The input spectrum has a per-pixel average signal-to-noise of $\SNR=3$. The blindspot denoiser increases the $\SNR$ of the simulated spectrum to $\SNR=130$ in the whole wavelength range and to $\SNR=116$ in the Ca\,\textsc{ii} triplet region.
     \textbf{Top panel:} The noisy input spectrum $y$ (black dots), the clean reference spectrum $x$ (light blue line) and the blindspot output $\hat{x}$ (dark blue line, shifted vertically for clarity). In the bottom half of the top panel, the residuals $x-\hat{x}$ are shown.
@@ -714,9 +726,99 @@ On the test data set, mean per-spectrum reconstruction RMSE falls from \ld{$0.08
 \label{fig:representative_spectrum}
 \end{figure*}
 
-The ablation experiments identify which components contribute to the performance gains. While PCA denoising is a simple, well-understood linear baseline, it is based entirely on clean reference spectra and the limited number of principal components are not sufficient to capture the full complexity of stellar absorption features. This is reflected in the RMSE of $0.0106$ for the PCA-based denoiser, which is more than twice the RMSE of the blindspot denoiser. Including the scalar noise parameter $\bar{\sigma}$ in the blindspot model improves the mean RMSE from $0.0055$ to $0.0053$, indicating that the blindspot construction itself is the primary driver of the reconstruction performance, rather than any information about the variance of the noise. The supervised U-Net denoiser achieves the lowest RMSE of $0.0043$, but it requires access to clean reference spectra for training, which is not almost never available in practice.
+Further zoom-ins on the Ca\,\textsc{ii} triplet lines are shown in Fig.~\ref{fig:caII_zoom}. The blindspot denoiser is able to recover the depth and width of the line cores, but it fails to reproduce the wings of the lines. These subtle differences have, however, important consequences for physical parameter estimation, as the wings of the Ca\,\textsc{ii} lines are sensitive to the surface gravity of the star. We will discuss this in more detail in Section~\ref{sec:results_downstream_logg}.
 
-The line-preservation diagnostics presented in in Section~\ref{sec:results_physical} establish that the gain from the blindspot denoiser is genuine and not merely a smoothing with a moving window toward the continuum.
+\begin{figure*}
+\centering
+% \includegraphics[width=\linewidth]{figs/fig3_caII_zoom_panels.pdf}
+\includegraphics{figs/fig_CaII_4141.pdf}
+\caption{
+    \ld{Text on axes is too small. -- Green is not wide enough!!!}
+    Zoom in on the Ca\,\textsc{ii} lines of the same simulated spectrum as in Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. The noisy input $y$ is plotted with \ld{open circles}, the clean reference $x$ with light blue solid lines, and the blindspot output $\hat{x}$ with dark blue dots. 
+    The blindspot reconstruction follows the depth and width of the cores of Ca\,\textsc{ii} lines, despite the very high noise of the input, but fail to precisely reproduce the wings of the lines.
+    Note that certain wavelength bins of the simulated spectrum are masked at the locations of strong sky emission lines.
+}
+\label{fig:caII_zoom}
+\end{figure*}
+
+\subsection{Absorption Feature Equivalent Widths and Continuum Recovery in High-Noise Regions}
+\label{sec:results_physical}
+
+The overall reconstruction RMSE is a useful metric to evaluate the performance of the denoiser, and it indicates that the continuum flux can be recovered to sub-percent accuracy. However, it does not provide information about how well the denoiser preserves astrophysically relevant features in the spectra. To address this, we also evaluate the denoiser on the equivalent widths of absorption features, which are direct proxies of physical parameters. As we will demonstrate, the denoiser can recover equivalent widths with good accuracy, when measured with respect to the clean reference, but it is not able to recover the precise shape of the absorption lines.
+
+The inability to recover the precise shape of absorption lines has detrimental effects on the estimation of parameters, such as $\log g$ from strong absorption lines. When no strong absorption features are available, fundamental stellar parameters are often can only be determined from aggregate information from the full spectrum. We are going to address this question in Sec.~\ref{sec:results_downstream_logg}.
+
+In this section, we test the blindspot denoiser with line-sensitive diagnostics, namely the relative error of the equivalent widths of the Ca\,\textsc{ii} triplet lines, as well as the recoverability of the total absorption of stellar origin in a wavelength range with very high noise. For this latter, we measure the total EW in the noise-dominated \mbox{O$_2$} A-band. The results are summarized in Table~\ref{tab:main_results}.
+
+% Aggregate reconstruction RMSE does not by itself exclude simple smoothing or line filling. We therefore test the reconstructed spectra with a line-sensitive diagnostic --- relative equivalent-width error on each Ca\,\textsc{ii} triplet line --- and, separately, a high-noise control in the sky-dominated \mbox{O$_2$} A-band, which is an atmospheric-window stress test rather than a stellar-line diagnostic (Table~\ref{tab:main_results}).
+
+\begin{table*}
+\centering
+    \begin{tabular}{lccc}
+        \hline
+          & \multicolumn{2}{c}{Relative error of EW} & $\Delta=\hat{x}-y$ \\
+        Diagnostic & Noisy input $y$ & Blindspot output $\hat{x}$ \\
+        \hline
+        \multicolumn{4}{l}{\emph{Ca\,\textsc{ii} triplet}} \\
+        $\quad 8498$~\AA   & $0.737$ [$0.709$, $0.764$] & $0.121$ [$0.117$, $0.126$] & $-0.616$ [$-0.641$, $-0.590$] \\
+        $\quad 8542$~\AA   & $0.328$ [$0.318$, $0.339$] & $0.098$ [$0.095$, $0.101$] & $-0.230$ [$-0.241$, $-0.220$] \\
+        $\quad 8662$~\AA   & $1.02\phantom{0}$ [$0.983$, $1.066$] & $0.147$ [$0.142$, $0.151$] & $-0.873$ [$-0.919$, $-0.838$] \\
+        $\quad$Triplet mean \ld{must be total} & $0.695$ [$0.676$, $0.718$] & $0.122$ [$0.119$, $0.125$] & $-0.573$ [$-0.595$, $-0.555$] \\
+        \hline
+        \multicolumn{3}{l}{\emph{\mbox{O$_2$} A-band}} \\
+        $\quad 7590$--$7700$~\AA{} & $22.2\phantom{0}$ & $1.19$ & $-21.0\phantom{0}$ \\
+        \hline
+\end{tabular}
+\caption{
+    \ld{Add TiO?}
+    Comparison of the relative error of EW measurements between the noisy input and the blindspot output for the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band. The numbers are the median relative EW error calculated over the test spectra. Numbers in the square brackets indicate the $95\%$ confidence intervals determined from bootstrap samples of $1000$ spectra drawn randomly from the test set.
+    \ld{What is the $\Delta=\hat{x}-y$ column?}
+    % \ld{Need to show scatter plot of EW -- review caption} Line-sensitive and high-noise-\ld{window} reconstruction diagnostics on the test split. Equivalent-width entries use the relative error in Equation~\ref{eq:ew_relative_error}. The \mbox{O$_2$} A-band rows are an atmospheric-\ld{window} stress test, not a stellar-line diagnostic. Per-line bootstrap confidence intervals and the Ca\,\textsc{ii} morphology panel are reported in Appendix~\ref{app:line_addenda}.
+    % Full line-sensitive reconstruction diagnostics on the test split. Equivalent-width entries are per-spectrum medians of the relative error in Equation~\ref{eq:ew_relative_error}; bracketed intervals on the four Ca\,\textsc{ii} rows are $95\%$ paired-bootstrap confidence intervals from $1000$ resamples over the $10{,}000$ test spectra, where the same resample indices are applied to the noisy and denoised columns so the $\Delta$ interval captures per-spectrum correlation. The \mbox{O$_2$} A-band rows are included as a stress test in a high-noise atmospheric \ld{window}, not as the main-text reconstruction result; bootstrap intervals are not reported on the \mbox{O$_2$} auxiliary rows.
+}
+\label{tab:main_results}
+\end{table*}
+
+In Table~\ref{tab:main_results}, we summarize the relative error of the equivalent widths of the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band \ld{window} as it is measured on the noisy input and the blindspot output. The Ca\,\textsc{ii} triplet lines are also plotted in Figure~\ref{fig:caII_zoom} as a function of wavelength. It is visible from the figure that the blindspot denoiser is able to recover the overall shape of the Ca\,\textsc{ii} lines, including the depth and width of the line cores, despite the very high noise of the input. On the other hand, the blindspot denoiser is unable to precisely reproduce the wings of the lines, which is reflected in the remaining relative error of the equivalent width of the Ca\,\textsc{ii} lines in Table~\ref{tab:main_results}.
+
+The distribution of the relative error of the total Ca\,\textsc{ii} equivalent width is plotted in Figure~\ref{fig:caII_total_ew_clean_vs_residual} as a function of the total equivalent width of the clean reference. The blindspot denoiser is able to reduce the relative error of EW measurement by at least a factor of approximately $2$-$3$ for the majority of the spectra, but the remaining error is still prominent.
+
+\begin{figure}
+\centering
+%\includegraphics[width=0.9\linewidth]{figs/fig_ca2_total_ew_clean_vs_residual.pdf}
+\includegraphics{figs/fig_ew_rel_error_snr.pdf}
+\caption{
+    Comparison of the relative error of total equivalent width of the Ca\,\textsc{ii} triplet lines between the noisy input (left panel) and the blindspot output (right panel). The plot includes all spectra of the test set with the same magnitude and parameter ranges as in Table~\ref{tab:data_summary}. While the blindspot denoiser significantly reduces the relative error of the equivalent width, the remaining error is still prominent. \ld{reference from text}
+}
+\label{fig:caII_total_ew_clean_vs_residual}
+\end{figure}
+
+\ld{Write a sentence about the O$_2$ A-band . Add figure too?}
+
+Fig.~\ref{fig:appendix_ew_panel} shows the typical relative error of equivalent width measurements for various absorption features as a function of the input signal-to-noise ratio or the simulated spectrum.
+
+\ld{What actually are the numbers in Fig.~\ref{fig:appendix_ew_panel}? Is the relative error really as high as 5 or more for the noisy spectra?}
+
+\begin{figure}
+\centering
+\includegraphics[width=\linewidth]{figs/appendix/fig_ew_residual_std.pdf}
+\caption{
+    \ld{Figure out what is actually plotted here.}
+    Statistics of the relative error of the equivalent width of various absorption features, as a function of input $\SNR$. The signal-to-noise ratio of input spectra was calculated as the \ld{median} of the per-pixel $\SNR$ across the entire spectrum, whereas the relative error of the equivalent width is always expressed with respect to the clean spectrum. In each $\SNR$ bin, the
+    Equivalent-width preservation across diagnostic lines and input $\SNR$. Standard deviation of the EW relative error as a function of input $\SNR$ for the TiO band near $7650$~\AA{} and the three Ca\,\textsc{ii} triplet lines (solid: denoised; dotted: noisy). The denoised dispersion is reduced by an order of magnitude in the lowest-$\SNR$ bin and the gain narrows monotonically as input $\SNR$ rises, so the recovery is most useful where the noisy measurement is least informative; lines with intrinsically larger EW recover more cleanly than the weaker TiO band, consistent with line strength governing recoverability.}
+\label{fig:appendix_ew_panel}
+\end{figure}
+
+**** *** ***
+
+All three Ca\,\textsc{ii} lines move in the same direction in Table~\ref{tab:main_results}: the recovery is not concentrated on the strongest core. The \mbox{O$_2$} A-band rows extend the same test into a narrow, high-noise atmospheric \ld{window} dominated by sky and detector terms; the \ld{window} is recovered rather than dropped, under this simulator. Figure~\ref{fig:caII_zoom} supplies the morphology behind the table: the blindspot output follows the depth and width of the line cores rather than flattening them toward the continuum.
+
+The downstream gain of Section~\ref{sec:results_downstream_logg} is therefore carried by line preservation, not by generic smoothing. The validation-tuned smoothers and PCA references in Table~\ref{tab:main_baselines} fall short on the same diagnostics; central-pixel leakage is ruled out structurally by the construction in Section~\ref{sec:blindspot_algorithm} and numerically in Appendix~\ref{app:architecture_integrity}; the context-predictability premise behind that construction is verified with model-free predictors in Appendix~\ref{app:controls_gamma}. All claims in this section are scoped to continuum-normalized, medium-resolution, late-type BOSZ/PFS-like spectra at magnitude $20.5$--$22.5$ under the independent zero-mean per-pixel noise model of Section~\ref{sec:method}.
+
+
+***
+
+The line-preservation diagnostics presented in in Section~\ref{sec:results_physical} establish that the gain from the blindspot denoiser is genuine and not merely a smoothing with a moving \ld{window} toward the continuum.
 
 \ld{Review:} In Appendix~\ref{app:architecture_integrity}, we verify numerically, that excluding the central pixel from the input of the blindspot network is essential. Without excluding the input pixel corresponding to the target pixel from the convolutional receptive field of the input layer of the network, the result collapse to 
 
@@ -732,7 +834,9 @@ Here we verify how a LightGBM $\log~g$ estimator, trained on clean spectra only,
 \ld{review this:} The $\log~g$ estimator is tested on a disjoint $5{,}000$-spectrum BOSZ partition (Appendix~\ref{app:contract}). The clean-reference row is an upper bound under this fixed map, not a deployable comparison.
 
 \begin{figure*}
-\includegraphics[width=\textwidth]{figs/fig4_downstream_clean_domain_transfer.pdf}
+\begin{center}
+    \includegraphics[width=0.9\linewidth]{figs/fig4_downstream_clean_domain_transfer.pdf}
+\end{center}
 \caption{\ld{review this, downsteam estimators are wrong} Clean-trained downstream calibration after denoising. Full-spectrum LightGBM calibrators are trained only on clean spectra and then evaluated, without refitting, on the same test spectra represented as clean inputs, blindspot outputs, Savitzky--Golay smooths, or noisy inputs. \textbf{Left:} centered robust-scatter ratio relative to the noisy input at $n_{\rm train}=30{,}000$ for four BOSZ labels; small points are five random splits, large markers are split means, and bars are split standard deviations. \textbf{Right:} residual distributions for the $\log g$ evaluation on the $5{,}000$-spectrum test partition in Table~\ref{tab:downstream_logg}. Side labels report $\mu$ (mean bias) and $\sigma$ (centered robust scatter) in dex.}
 \label{fig:downstream_clean_domain_transfer}
 \end{figure*}
@@ -778,64 +882,7 @@ For each of the stellar parameters and RV, the blindspot denoiser consistently i
 
 % The blindspot row tracks the clean column at an approximately fixed offset across calibrator-training sizes, while noisy and smoother rows stay flat at the noisy-input scale (Appendix~\ref{app:downstream_logg}, Table~\ref{tab:downstream_logg_sweep}). The denoiser therefore moves the noisy spectrum toward the calibrator's clean-input feature manifold rather than merely rescaling it, and the Table~\ref{tab:downstream_logg} numbers are not a special operating-point artefact.
 
-\subsection{Line Preservation Diagnostics}
-\label{sec:results_physical}
 
-While the fundametal stellar parameter are sensitive to the line shapes, they aggregate information across the full spectrum. We therefore also test the blindspot denoiser with line-sensitive diagnostics, namely the relative error of the equivalent width, see Eq.~\ref{eq:ew_relative_error}, of the Ca\,\textsc{ii} triplet lines, and a high-noise control in the sky-dominated \mbox{O$_2$} A-band. The results are summarized in Table~\ref{tab:main_results}.
-
-% Aggregate reconstruction RMSE does not by itself exclude simple smoothing or line filling. We therefore test the reconstructed spectra with a line-sensitive diagnostic --- relative equivalent-width error on each Ca\,\textsc{ii} triplet line --- and, separately, a high-noise control in the sky-dominated \mbox{O$_2$} A-band, which is an atmospheric-window stress test rather than a stellar-line diagnostic (Table~\ref{tab:main_results}).
-
-\begin{table}
-\centering
-\begin{tabular}{lcc}
-\hline
-           & \multicolumn{2}{c}{Relative error of EW} \\
-Diagnostic & Noisy input $y$ & Blindspot output $\hat{x}$ \\
-\hline
-\multicolumn{3}{l}{\emph{Ca\,\textsc{ii} triplet}} \\
-$\quad 8498$~\AA{} & $\phantom{0}0.737$ & $\mathbf{0.121}$ \\
-$\quad 8542$~\AA{} & $\phantom{0}0.328$ & $\mathbf{0.098}$ \\
-$\quad 8662$~\AA{} & $\phantom{0}1.02\phantom{0}$ & $\mathbf{0.147}$ \\
-\hline
-\multicolumn{3}{l}{\emph{\mbox{O$_2$} A-band window}} \\
-$\quad 7590$--$7700$~\AA{} & $22.2\phantom{0}$ & $\mathbf{1.19\phantom{0}}$ \\
-\hline
-\end{tabular}
-\caption{\ld{Need to show scatter plot of EW} Line-sensitive and high-noise-window reconstruction diagnostics on the test split. Equivalent-width entries use the relative error in Equation~\ref{eq:ew_relative_error}. The \mbox{O$_2$} A-band rows are an atmospheric-window stress test, not a stellar-line diagnostic. Per-line bootstrap confidence intervals and the Ca\,\textsc{ii} morphology panel are reported in Appendix~\ref{app:line_addenda}.}
-\label{tab:main_results}
-\end{table}
-
-\begin{figure*}
-\centering
-\includegraphics[width=\linewidth]{figs/fig3_caII_zoom_panels.pdf}
-\caption{
-    \ld{Text on axes is too small.}
-    Zoom in on the Ca\,\textsc{ii} lines of the same simulated spectrum as in Figure~\ref{fig:representative_spectrum}. The panels show the $8498$, $8542$, and $8662$~\AA{} lines. The noisy input $y$ is plotted with \ld{open circles}, the clean reference $x$ with light blue solid lines, and the blindspot output $\hat{x}$ with dark blue dots. 
-    The blindspot reconstruction follows the depth and width of the cores of Ca\,\textsc{ii} lines, despite the very high noise of the input, but fail to precisely reproduce the wings of the lines.
-    Note that certain wavelength bins of the simulated spectrum are masked at the locations of strong sky emission lines.
-}
-\label{fig:caII_zoom}
-\end{figure*}
-
-In Table~\ref{tab:main_results}, we summarize the relative error of the equivalent width of the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band window as it is measured on the noisy input and the blindspot output. The Ca\,\textsc{ii} triplet lines are also plotted in Figure~\ref{fig:caII_zoom} as a function of wavelength. It is visible from the figure that the blindspot denoiser is able to recover the overall shape of the Ca\,\textsc{ii} lines, including the depth and width of the line cores, despite the very high noise of the input. The blindspot denoiser is not able to precisely reproduce the wings of the lines, however, which is reflected in the remaining relative error of the equivalent width of the Ca\,\textsc{ii} lines in Table~\ref{tab:main_results}.
-
-The distribution of the relative error of the total Ca\,\textsc{ii} equivalent width is plotted in Figure~\ref{fig:caII_total_ew_clean_vs_residual} as a function of the total equivalent width of the clean reference. The blindspot denoiser is able to reduce the relative error by at least a factor of approximately $2$-$3$ for the majority of the spectra, but the remaining error is still prominent
-
-\ld{Write a sentence about the O$_2$ A-band window.}
-
-\begin{figure*}
-\centering
-\includegraphics[width=0.7\linewidth]{figs/fig_ca2_total_ew_clean_vs_residual.pdf}
-\caption{
-    Comparison of the relative error of total equivalent width of the Ca\,\textsc{ii} triplet lines between the noisy input (left panel) and the blindspot output (right panel). The plot includes all spectra of the test set with the same magnitude and parameter ranges as in Table~\ref{tab:data_summary}. While the blindspot denoiser significantly reduces the relative error of the equivalent width, the remaining error is still prominent. \ld{reference from text}
-}
-\label{fig:caII_total_ew_clean_vs_residual}
-\end{figure*}
-
-
-All three Ca\,\textsc{ii} lines move in the same direction in Table~\ref{tab:main_results}: the recovery is not concentrated on the strongest core. The \mbox{O$_2$} A-band rows extend the same test into a narrow, high-noise atmospheric window dominated by sky and detector terms; the window is recovered rather than dropped, under this simulator. Figure~\ref{fig:caII_zoom} supplies the morphology behind the table: the blindspot output follows the depth and width of the line cores rather than flattening them toward the continuum.
-
-The downstream gain of Section~\ref{sec:results_downstream_logg} is therefore carried by line preservation, not by generic smoothing. The validation-tuned smoothers and PCA references in Table~\ref{tab:main_baselines} fall short on the same diagnostics; central-pixel leakage is ruled out structurally by the construction in Section~\ref{sec:blindspot_algorithm} and numerically in Appendix~\ref{app:architecture_integrity}; the context-predictability premise behind that construction is verified with model-free predictors in Appendix~\ref{app:controls_gamma}. All claims in this section are scoped to continuum-normalized, medium-resolution, late-type BOSZ/PFS-like spectra at magnitude $20.5$--$22.5$ under the independent zero-mean per-pixel noise model of Section~\ref{sec:method}.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -1083,39 +1130,6 @@ This appendix checks that the reconstruction-RMSE reduction of Section~\ref{sec:
 \paragraph{Full line-sensitive diagnostics.}
 Table~\ref{tab:main_results_full} reports the full-precision equivalent-width errors and paired-bootstrap confidence intervals summarized in compact form in Section~\ref{sec:results_physical}.
 
-% ROLE: full-precision and bootstrap support for the compact main line-preservation table.
-\begin{table*}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lccc}
-\hline
- & \textbf{Noisy input $y$} & \textbf{Blindspot output $\hat{x}$} & \textbf{$\Delta=\hat{x}-y$} \\
-\hline
-\multicolumn{4}{l}{\emph{Ca\,\textsc{ii} triplet relative EW error}} \\
-$\quad 8498$~\AA   & $0.737$ [$0.709$, $0.764$] & $\mathbf{0.121}$ [$\mathbf{0.117}$, $\mathbf{0.126}$] & $-0.616$ [$-0.641$, $-0.590$] \\
-$\quad 8542$~\AA   & $0.328$ [$0.318$, $0.339$] & $\mathbf{0.098}$ [$\mathbf{0.095}$, $\mathbf{0.101}$] & $-0.230$ [$-0.241$, $-0.220$] \\
-$\quad 8662$~\AA   & $1.02$ [$0.983$, $1.066$] & $\mathbf{0.147}$ [$\mathbf{0.142}$, $\mathbf{0.151}$] & $-0.873$ [$-0.919$, $-0.838$] \\
-$\quad$Triplet mean & $0.695$ [$0.676$, $0.718$] & $\mathbf{0.122}$ [$\mathbf{0.119}$, $\mathbf{0.125}$] & $-0.573$ [$-0.595$, $-0.555$] \\
-\hline
-\multicolumn{4}{l}{\emph{Telluric \mbox{O$_2$} A-band hard window ($7590$--$7700$~\AA, $181$ pixels)}} \\
-$\quad$Mean relative EW degradation       & $22.2$ & $\mathbf{1.19}$ & $-21.0$ \\
-\hline
-\end{tabular}
-\caption{Full line-sensitive reconstruction diagnostics on the test split. Equivalent-width entries are per-spectrum medians of the relative error in Equation~\ref{eq:ew_relative_error}; bracketed intervals on the four Ca\,\textsc{ii} rows are $95\%$ paired-bootstrap confidence intervals from $1000$ resamples over the $10{,}000$ test spectra, where the same resample indices are applied to the noisy and denoised columns so the $\Delta$ interval captures per-spectrum correlation. The \mbox{O$_2$} A-band rows are included as a stress test in a high-noise atmospheric window, not as the main-text reconstruction result; bootstrap intervals are not reported on the \mbox{O$_2$} auxiliary rows.}
-\label{tab:main_results_full}
-\end{table*}
-
-% ROLE: distributional robustness of EW preservation across diagnostic lines and input $\SNR$.
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.6\linewidth]{figs/appendix/fig_ew_residual_std.pdf}
-\caption{
-    Statistics of the relative error of the equivalent width of various absorption features, as a function of input $\SNR$. The signal-to-noise ratio of input spectra was calculated as the \ld{median} of the per-pixel $\SNR$ across the entire spectrum, whereas the relative error of the equivalent width is always expressed with respect to the clean spectrum. In each $\SNR$ bin, the
-    Equivalent-width preservation across diagnostic lines and input $\SNR$. Standard deviation of the EW relative error as a function of input $\SNR$ for the TiO band near $7650$~\AA{} and the three Ca\,\textsc{ii} triplet lines (solid: denoised; dotted: noisy). The denoised dispersion is reduced by an order of magnitude in the lowest-$\SNR$ bin and the gain narrows monotonically as input $\SNR$ rises, so the recovery is most useful where the noisy measurement is least informative; lines with intrinsically larger EW recover more cleanly than the weaker TiO band, consistent with line strength governing recoverability.}
-\label{fig:appendix_ew_panel}
-\end{figure}
-
 Figure~\ref{fig:appendix_ew_panel} resolves the line-preservation result of Section~\ref{sec:results_physical} into the dispersion of the EW relative error across diagnostic features as input $\SNR$ varies. It shows that the EW-error reduction is not dominated by a narrow input-$\SNR$ subset: the dispersion of the EW relative error after denoising is reduced over the entire diagnostic feature set rather than for a single Ca\,\textsc{ii} core or a single $\SNR$ bin.
 
 \section{Clean-Trained Gravity Calibrator Checks}
@@ -1157,7 +1171,7 @@ This appendix records the repeated-noise diagnostic referenced from Section~\ref
 \label{fig:noise_ensemble}
 \end{figure}
 
-Figure~\ref{fig:noise_ensemble} shows that the repeated-draw mean follows the clean spectrum and that the denoised spread remains far below the input noise scale over most wavelengths for this fixed spectrum. Taking the across-draw spread $\sigma_{\hat{x}}$ as the output noise and the clean flux as the numerator, the median over the unmasked pixels, $\mathrm{median}_{\lambda}(x_{\lambda}/\sigma_{\hat{x},\lambda})$, gives an output $\SNR$ of about $130$ for this spectrum ($116$ when restricted to the Ca\,\textsc{ii} triplet window), against $3.2$ at the input under the same per-pixel definition; these are the values quoted in Figure~\ref{fig:representative_spectrum}. The diagnostic supports stability to repeated simulator noise draws in this example only; it should not be read as posterior uncertainty calibration, an error bar on individual line measurements, population robustness, or robustness to all training seeds.
+Figure~\ref{fig:noise_ensemble} shows that the repeated-draw mean follows the clean spectrum and that the denoised spread remains far below the input noise scale over most wavelengths for this fixed spectrum. Taking the across-draw spread $\sigma_{\hat{x}}$ as the output noise and the clean flux as the numerator, the median over the unmasked pixels, $\mathrm{median}_{\lambda}(x_{\lambda}/\sigma_{\hat{x},\lambda})$, gives an output $\SNR$ of about $130$ for this spectrum ($116$ when restricted to the Ca\,\textsc{ii} triplet \ld{window}), against $3.2$ at the input under the same per-pixel definition; these are the values quoted in Figure~\ref{fig:representative_spectrum}. The diagnostic supports stability to repeated simulator noise draws in this example only; it should not be read as posterior uncertainty calibration, an error bar on individual line measurements, population robustness, or robustness to all training seeds.
 
 \bibliographystyle{aasjournalv7}
 \bibliography{cas-refs.cleaned}
