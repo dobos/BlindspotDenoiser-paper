@@ -1,0 +1,33 @@
+
+\begin{tabular}{llcccc}
+\hline
+Denoising model & Training method & Mean          & Median        & $5$-percentile & $95$-percentile \\
+                &                 & relative RMSE & relative RMSE & relative RMSE  & relativeRMSE \\
+\hline
+Noisy input & -- &
+    0.1736 &
+    0.1515 &
+    0.0698 &
+    0.3374 \\
+PCA, $k\!=\!16$ & clean input &
+    0.0319 &
+    0.0248 &
+    0.0123 &
+    0.0684 \\
+Savitzky-Golay filter & noisy input &
+    0.0656 &
+    0.0598 &
+    0.0302 &
+    0.1129 \\
+Blindspot & noisy reference, self-supervised &
+    0.0255 &
+    0.0171 &
+    0.0054 &
+    0.0715 \\
+Supervised U-Net & clean reference, supervised &
+    0.0253 &
+    0.0140 &
+    0.0042 &
+    0.0820 \\
+\hline
+\end{tabular}
