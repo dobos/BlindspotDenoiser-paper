@@ -281,7 +281,7 @@ The full, pixel-wise variance vector is used only to draw $\epsilon_{\lambda}$ i
 
 We train the network with Huber loss in the form of
 \begin{align}
-    \mathcal{L}(\m{\theta};\m{y})
+    L(\m{\theta};\m{y})
     &= \frac{1}{N}\sum_{\lambda=1}^{N}
         \ell_{\delta}\!\left(y_{\lambda} - \hat{x}_{\lambda}\right) \\[1em]
     \ell_{\delta}(r) &=
@@ -295,7 +295,7 @@ The Huber loss behaves as squared-error regression for residuals with $|r|\leq\d
 
 The optimization problem can be written as
 \begin{equation}
-    \m{\theta}^\ast = \operatorname*{arg\,min}_{\m{\theta}}\;\mathbb{E}_{y}\!\left[\mathcal{L}(\m{\theta};\m{y})\right],
+    \m{\theta}^\ast = \operatorname*{arg\,min}_{\m{\theta}}\;\mathbb{E}_{y}\!\left[L(\m{\theta};\m{y})\right],
     \label{eq:theta_star}
 \end{equation}
 where the expectation value is taken over the ensemble of noisy spectra. The denoised spectrum is obtained by evaluating Equation~\ref{eq:blindspot_prediction} at $\m{\theta}^\ast$.
@@ -383,8 +383,8 @@ If the center pixel was visible, the noisy-target objective would have a zero-lo
 \begin{equation}
     \hat{x}_{\lambda}=y_{\lambda}
     \quad\Longrightarrow\quad
-    \mathcal{L}(\m{\theta};\m{y})
-    = \frac{1}{L}\sum_{\lambda=1}^{L}
+    L(\m{\theta};\m{y})
+    = \frac{1}{N}\sum_{\lambda=1}^{N}
         \ell_{\delta}\!\left(y_{\lambda}-y_{\lambda}\right)
     =0.
 \end{equation}
@@ -427,7 +427,7 @@ A small $\gamma_\lambda$ means the context predicts the clean flux more accurate
 %The observation simulator outputs the $\sigma_{\lambda}^{2}$ per-pixel variances, see Eq.~\ref{eq:noise_components}, while the network receives the spectrum-level scalar $\bar{\sigma}^{2}=N^{-1}\sum_{\lambda}\sigma_{\lambda}^{2}$. \ld{??? The scalar $\gamma$ in Equation~\ref{eq:gamma}} therefore describes spectrum-averaged recoverability under the same averaging used for conditioning. Wavelength windows whose local variance profile differs strongly from $\bar{\sigma}^{2}$, such as the \mbox{O$_2$} A-band, require direct window diagnostics. We will evaluate those windows in Section~\ref{sec:results_physical} instead of treating the scalar $\gamma$ as a local guarantee.
 
 % ROLE: full per-estimator context-recoverability evidence for reviewer audit.
-\begin{table}
+\begin{table*}
 \centering
 \begin{tabular}{lccccc}
 \hline
@@ -442,7 +442,7 @@ Worst of three families & $2.81\times10^{-4}$ & $1.00\times10^{-3}$ & $6.70\time
 \end{tabular}
 \label{tab:gamma_full}
 \caption{\ld{rework this table completely, use noisy models to test smoothers, add blindspot results} Model-free measurements of $\gamma=\tau^{2}/\sigma^{2}$ on clean test spectra. Ca\,\textsc{ii}, O$_2$, and TiO entries summarize the corresponding diagnostic windows. The median-of-three and worst-of-three rows are the aggregations promoted to the main-text Table~\ref{tab:gamma_main}.}
-\end{table}
+\end{table*}
 
 \subsection{The size of the target support}
 
@@ -459,17 +459,48 @@ Rather than assuming that the $\gamma \ll 1$ condition holds for any type of spe
 
 \subsection{Information limits on downstream tasks}
 
-In order to estimate a stellar parameters $\m{\varphi}$ from a noisy spectrum, we consider the Fisher information matrix $\mathcal{I}_{\m{\varphi}}$, which quantifies the amount of information that a single noisy observation $\m{y}$ carries about the parameters $\m{\varphi}$. The Fisher information takes the matrix form of
+\ld{Rewrite along this logic:
+\begin{itemize}
+    \item information content cannot grow by denoising
+    \item not all estimators are robust to noise
+    \item denoising can improve the performance of some estimators
+    \item MLE with template fitting is the best possible estimator
+    \item but denoising can also introduce bias
+    \item it might appear that denoising increases information content, but it does not
+    \item it's just that the estimator is more robust to noise than to bias
+    \item and the denoiser can exchange some variance for bias, which is a trade-off that can be beneficial for some estimators
+\end{itemize}
+}
+
+Let $T$ be an estimator of the atmospheric parameters $\m{\varphi}$ which can be applied to the noisy spectrum $\m{y}$, as well as the denoised spectrum $\hat{\m{x}}$. The estimator $T$ is most often a maximum likelihood estimator (MLE) used in template fitting or any machine learning model. From the prospective of denoising, the important question is whether the estimator $T$ can be applied to the denoised spectrum $\hat{\m{x}}$ to obtain a better estimate of $\m{\varphi}$ than when applied to the noisy spectrum $\m{y}$. By better estimate, we mean an estimate with lower variance and/or lower bias. The bias and the variance can be written as
+\begin{align}
+    \mathrm{Bias}[T(\m{y})] &= \mathbb{E}[T(\m{y})] - \m{\varphi} \\[1em]
+    \mathrm{Var}[T(\m{y})] &= \mathbb{E}\!\left[(T(\m{y}) - \mathbb{E}[T(\m{y})])^2\right],
+\end{align}
+where $\m{\varphi}$ is the true value of the parameters. We will assume that the same estimator $T$ can be applied to both the noisy spectrum $\m{y}$ and the denoised spectrum $\hat{\m{x}}$. The question is whether the variance of $T(\hat{\m{x}})$ can be lower than that of $T(\m{y})$ without introducing significant bias.
+
+This can be tested on simulated spectra, where the true parameters $\m{\varphi}$ and the clean flux are known. Let us generate a large number of noise realizations of the same clean spectrum and apply the denoiser, as well as the estimator $T$ to the noisy spectra. We can then calculate the bias and variance as
+\begin{align}
+    \mathrm{Bias}[T(f_{\m{\theta}}(\m{y}))] &= \frac{1}{M}\sum_{i=1}^{M} T(f_{\m{\theta}}(\m{y}_i)) - \m{\varphi} \\[1em]
+    \mathrm{Var}[T(f_{\m{\theta}}(\m{y}))] &= \frac{1}{M}\sum_{i=1^{M} (T(f_{\m{\theta}}(\m{y}_i)) - \mathbb{E}[T(f_{\m{\theta}}(\m{y}))])^2.
+\end{align} 
+
+
+In order to estimate a stellar parameters $\m{\varphi}$ from a noisy spectrum, we consider the Fisher information matrix $\mathcal{I}_{\m{\varphi}}$, which quantifies the amount of information that a single noisy observation $\m{y}$ with its uncertainty vector $\m{\sigma}$ carries about the parameters $\m{\varphi}$. The Fisher information takes the matrix form of
 \begin{equation}
     \left[ \mathcal{I}_{\m{\varphi}}(\m{y}) \right]_{ij} =
         \mathbb{E}\!\left[
-            \frac{\partial \log \mathcal{L}(\m{y}\mid\m{\varphi})}{\partial \varphi_i} \cdot
-            \frac{\partial \log \mathcal{L}(\m{y}\mid\m{\varphi})}{\partial \varphi_j}
+            \frac
+                {\partial \log \mathcal{L}(\m{y}, \m{\sigma} \mid \m{\varphi})}
+                {\partial \varphi_i} \cdot
+            \frac
+                {\partial \log \mathcal{L}(\m{y}, \m{\sigma} \mid \m{\varphi})}
+                {\partial \varphi_j}
         \right],
 \end{equation}
-where $\mathcal{L}(\m{y}\mid\m{\varphi})$ is the likelihood of the noisy observation $\m{y}$ given the stellar parameters $\m{\varphi}$ and the expectation is taken over all possible noise realizations of $\m{y}$. The Fisher information matrix is a lower bound on the covariance of any unbiased estimator of $\m{\varphi}$ through the Cramér--Rao bound.
+where $\mathcal{L}(\m{y},\m{\sigma} \mid \m{\varphi})$ is the likelihood of the noisy observation $\m{y}$ given the stellar parameters $\m{\varphi}$ and the expectation is taken over all possible noise realizations of $\m{y}$, sampled from the noise model given by $\m{\sigma}$. The Fisher information matrix is a lower bound on the covariance of any unbiased estimator of $\m{\varphi}$ through the Cramér--Rao bound.
 
-To calculate how much information is carried by a spectrum about a single parameter $\varphi_1$, we still need to consider the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ and marginalize over the other parameters $\varphi_2,\dots,\varphi_k$. Although one could calculate the single parameter Fisher information by marginalizing the likelihood function over the rest of the model parameters $\m{\varphi}_{-1} = \varphi_2,\dots,\varphi_k$, but this would overestimate the information content of the spectrum about $\varphi_1$ because it ignores the degeneracies between the parameters. To understand this, consider the difference between fitting all parameters simultaneously and fitting only $\varphi_1$ while keeping the other parameters fixed (and assuming their values are known). Marginalizing the likelihood function is the equivalent of introducing a strong prior on the other parameters, since
+To calculate how much information is carried by a spectrum about a single parameter $\varphi_1$, we still need to consider the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ and marginalize over the other parameters $\varphi_2,\dots,\varphi_k$. Although one could calculate the single parameter Fisher information by marginalizing the likelihood function over the rest of the model parameters $\m{\varphi}_{-1} = \varphi_2,\dots,\varphi_k$, the marginal would overestimate the information content of the spectrum about $\varphi_1$ because it ignores the degeneracies between the parameters. To understand this, consider the difference between fitting all parameters simultaneously and fitting only $\varphi_1$ while keeping the other parameters fixed (and assuming their values are known). Marginalizing the likelihood function is the equivalent of introducing a strong prior on the other parameters, since
 \begin{equation}
     \mathcal{L}_m(\m{y}\mid\varphi_1) = \int \mathcal{L}(\m{y}\mid\varphi_1, \m{\varphi}_{-1}) \, p(\m{\varphi}_{-1}) \, d\m{\varphi}_{-1},
 \end{equation}
@@ -479,9 +510,9 @@ Instead of marginalizing the likelihood function, one must \textit{profile} it o
 \begin{equation}
     \mathcal{L}_p(\m{y}\mid\varphi_1) = \max_{\m{\varphi}_{-1}} \mathcal{L}(\m{y}\mid\varphi_1,\m{\varphi}_{-1})
 \end{equation}
-This is the standard method of multivariate parameter estimation, especially when other nuisance parameters are present, such as flux calibration coefficients or continuum normalization parameters \citep{2024Dobos_rv}.
+This is the standard method of multivariate parameter estimation with template fitting, especially when other nuisance parameters are present, such as flux calibration coefficients or continuum normalization parameters \citep{2024Dobos_rv}.
 
-We can calculate the single-parameter Fisher information about $\varphi_1$ from the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ by taking its inverse and then
+Fortunately, by using a linear algebra equality, we can easily calculate the single-parameter Fisher information about $\varphi_1$ from the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ by taking its inverse and then
 \begin{equation}
     \mathcal{I}_{\varphi_1} = \left[ \mathcal{I}_{\m{\varphi}}^{-1} \right]_{11}^{-1}.
 \end{equation}
@@ -499,6 +530,33 @@ Note, that Eq.~\ref{eq:data_processing_inequality} expresses the inequality of p
 $
     \m{A} \preceq \m{B} \Leftrightarrow \m{v}^T \m{A} \m{v} \leq \m{v}^T \m{B} \m{v}, \forall \m{v}.
 $
+
+
+
+The Cramér--Rao bound states that the variance of any unbiased estimator is lower bounded by the inverse of the Fisher information.
+
+The answer is that it cannot, because the Fisher information about $\m{\varphi}$ in the denoised spectrum $\hat{\m{x}}$ is always less than or equal to that in the noisy spectrum $\m{y}$, as expressed by Eq.~\ref{eq:data_processing_inequality}. Therefore, any estimator $T$ applied to $\hat{\m{x}}$ cannot yield a lower variance estimate of $\m{\varphi}$ than when applied to $\m{y}$.
+
+\ld{Verify this statement}. While we know the likelihood function $\mathcal{L}(\m{y},\m{\sigma}\mid\m{\varphi})$ of the noisy observation $\m{y}$, since we know how to model a spectrum with parameters $\m{\varphi}$ and we have an assumption about the noise model, we do not know the likelihood function of the denoised spectrum $\mathcal{L}(\hat{\m{x}},\hat{\m{\sigma}}\mid\m{\varphi})$. The structure of this likelihood function can be significantly different from that of the noisy observation, and it is not guaranteed to be a multivariate Gaussian even if the noise in $\m{y}$ is originally Gaussian. The denoiser can introduce correlations between pixels, and it can also introduce bias in the denoised spectrum. Therefore, calculating the Fisher information from the denoised spectrum is generally not straightforward.
+
+\ld{Do something with it.} Since the denoised spectrum is in the domain of the original likelihood function, and we assume that the noise on $\hat{\m{x}}$ is approximately Gaussian and known, we can use the same $\mathcal{L}(\m{y},\m{\sigma}\mid\m{\varphi})$ to estimate the Fisher information about $\varphi$ from the denoised spectrum $\hat{\m{x}} = f_\theta(\m{y})$ as
+\begin{equation}
+    \begin{split}
+    \mathcal{I}_{\m{\varphi}}(\hat{\m{x}}) & \approx \\
+        & \mathbb{E}\!\left[
+            \frac
+                {\partial \log \mathcal{L}(\m{y}\mid\m{\varphi}, f_{\m{\theta}}(\m{y}) = \hat{\m{x}})}
+                {\partial \varphi_i} 
+        \right. \times \\
+        & \left.
+            \quad\quad\quad\quad
+            \frac
+                {\partial \log \mathcal{L}(\m{y}\mid\m{\varphi}, f_{\m{\theta}}(\m{y}) = \hat{\m{x}})}
+                {\partial \varphi_j}
+        \right].
+    \end{split}
+\end{equation}
+What this means is that the likelihood function for $\hat{\m{x}}$ is similar to that of $\m{y}$ (if we ignore that the denoiser changes the noise model), but it has to be conditioned on $\m{x}' = \hat{\m{x}} = f_\theta(\m{y})$, i.e. the expectation is now taken over the noise realizations of $\m{y}$ that lead to the same denoised spectrum $\hat{\m{x}}$. Note, that the Fisher information is still evaluated about the same $\m{\varphi}$, even if the MLE of $\m{\varphi}$ for $\hat{\m{x}}$ is different. The Fisher information about $\m{\varphi}$ from the denoised spectrum is therefore a lower bound on the Fisher information from the noisy observation, and it can be strictly smaller if the denoiser is not invertible.
 
 A deterministic denoiser cannot increase the Fisher information carried by a single observed spectrum, neither for the full parameter vector nor for a profiled parameter of interest. Therefore, any downstream improvement for a parameter such as $\varphi_1$ should be interpreted not as an increase in Fisher information, but as an estimator-dependent bias.
 
@@ -809,7 +867,7 @@ In this section, we test the blindspot denoiser with line-sensitive diagnostics,
         \hline
 \end{tabular}
 \caption{
-    \ld{Add TiO?}
+    \ld{Add TiO? -- generate numbers from the notebook}
     Comparison of the relative error of EW measurements between the noisy input and the blindspot output for the Ca\,\textsc{ii} triplet lines and the \mbox{O$_2$} A-band. The numbers are the median relative EW error calculated over the test spectra. Numbers in the square brackets indicate the $95\%$ confidence intervals determined from bootstrap samples of $1000$ spectra drawn randomly from the test set.
     \ld{What is the $\Delta=\hat{x}-y$ column?}
     % \ld{Need to show scatter plot of EW -- review caption} Line-sensitive and high-noise-\ld{window} reconstruction diagnostics on the test split. Equivalent-width entries use the relative error in Equation~\ref{eq:ew_relative_error}. The \mbox{O$_2$} A-band rows are an atmospheric-\ld{window} stress test, not a stellar-line diagnostic. Per-line bootstrap confidence intervals and the Ca\,\textsc{ii} morphology panel are reported in Appendix~\ref{app:line_addenda}.
