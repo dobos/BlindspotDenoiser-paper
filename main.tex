@@ -107,7 +107,8 @@
 \email[show]{xzhao113@jhu.edu}
 
 \begin{abstract}
-Analyzing stellar spectra observed at low signal-to-noise ratios ($\SNR$) is unavoidable when survey targets are faint. Absorption line measurements that are essential to determine the stellar parameters and identify stellar types degrade first. We investigate weather sophisticated neural-network-based denoisers can help mitigate this. Real surveys provide no paired clean references for machine learning, so supervised denoisers inherit a simulator-to-deployment dependency. Although we still use simulated spectra, we train a one-dimensional, convolutional, self-supervised blindspot denoiser on noisy spectra alone, without using the clean reference during training or validation. Our blindspot network can predict the flux in every wavelength bin from a receptive field that excludes that particular wavelength bin from the input. With heteroscedastic noise, the mean, per-spectrum reconstruction error (RMSE) falls by about a factor of \ld{$16$} from the noisy input to the blindspot output. The uncertainty of equivalent widths (EWs) of absorption features decrease by a factor of \ld{$XX$}. To test whether this gain carries downstream information relevant for Galactic Archeology surveys, we apply classical machine learning models trained on clean synthetic spectra to predict the athmospheric parameters.
+Analyzing stellar spectra observed at low signal-to-noise ratios ($\SNR$) is unavoidable when survey targets are faint, such as in case of Galactic Archeology surveys. Absorption line measurements, that are essential to determine metallicity and surface gravity, degrade first. We investigate whether sophisticated neural-network-based denoisers, trained to minimize reconstruction error of the flux, can help mitigate this by reducing noise in the spectra while preserving information such as equivalent widths (EWs) and absorption line profiles. We demonstrate that a one-dimensional convolutional blindspot network trained only on noisy spectra in a self-supervised way can successfully attenuate the noise of spectra of faint stars with $\SNR$ as low as $5$ per resolution element, and improve the recovery of some of the stellar parameters by downstream machine learning models.
+Real surveys provide no paired clean references for machine learning, so supervised denoisers inherit a simulator-to-deployment dependency. Although we still use simulated spectra, we train the blindspot denoiser on noisy spectra alone, without using the clean reference during training or validation. The blindspot network predicts the flux in every wavelength bin from a receptive field that excludes that particular bin from the input. With heteroscedastic noise, the mean, per-spectrum relative reconstruction error (RMSE) falls by about a factor of \ld{$7$} from the noisy input to the blindspot output. The uncertainty of equivalent widths (EWs) of absorption features decrease by a factor of \ld{$1$-$12$}. To test whether this gain carries downstream information relevant for atmospheric parameter inference, we apply classical machine learning models trained on almost clean synthetic spectra to predict the parameters from the denoised spectra.
 %\ld{The test set residual scatter falls from \ld{$1.26$} on noisy input to $0.80$~dex on the denoised output. As a comparison, validation-tuned classical smoothers stay at the noisy-input scale. This downstream test probes the information used for dwarf--giant  target classification, paramount in Galactic Archaeology, indicating that the self-supervised blindspot method recovers real information from the spectrum and denoised spectra are usable as input to traditional parameter estimation methods rather than only pixel-level reconstructions.}
 The source code of the blindspot denoiser is publicly available on Github\footnote{\url{https://github.com/ViskaWei/BlindSpotDenoiser}}.
 \end{abstract}
@@ -461,7 +462,6 @@ Rather than assuming that the $\gamma \ll 1$ condition holds for any type of spe
 
 \ld{Rewrite along this logic:
 \begin{itemize}
-    \item information content cannot grow by denoising
     \item not all estimators are robust to noise
     \item denoising can improve the performance of some estimators
     \item MLE with template fitting is the best possible estimator
@@ -472,21 +472,7 @@ Rather than assuming that the $\gamma \ll 1$ condition holds for any type of spe
 \end{itemize}
 }
 
-Let $T$ be an estimator of the atmospheric parameters $\m{\varphi}$ which can be applied to the noisy spectrum $\m{y}$, as well as the denoised spectrum $\hat{\m{x}}$. The estimator $T$ is most often a maximum likelihood estimator (MLE) used in template fitting or any machine learning model. From the prospective of denoising, the important question is whether the estimator $T$ can be applied to the denoised spectrum $\hat{\m{x}}$ to obtain a better estimate of $\m{\varphi}$ than when applied to the noisy spectrum $\m{y}$. By better estimate, we mean an estimate with lower variance and/or lower bias. The bias and the variance can be written as
-\begin{align}
-    \mathrm{Bias}[T(\m{y})] &= \mathbb{E}[T(\m{y})] - \m{\varphi} \\[1em]
-    \mathrm{Var}[T(\m{y})] &= \mathbb{E}\!\left[(T(\m{y}) - \mathbb{E}[T(\m{y})])^2\right],
-\end{align}
-where $\m{\varphi}$ is the true value of the parameters. We will assume that the same estimator $T$ can be applied to both the noisy spectrum $\m{y}$ and the denoised spectrum $\hat{\m{x}}$. The question is whether the variance of $T(\hat{\m{x}})$ can be lower than that of $T(\m{y})$ without introducing significant bias.
-
-This can be tested on simulated spectra, where the true parameters $\m{\varphi}$ and the clean flux are known. Let us generate a large number of noise realizations of the same clean spectrum and apply the denoiser, as well as the estimator $T$ to the noisy spectra. We can then calculate the bias and variance as
-\begin{align}
-    \mathrm{Bias}[T(f_{\m{\theta}}(\m{y}))] &= \frac{1}{M}\sum_{i=1}^{M} T(f_{\m{\theta}}(\m{y}_i)) - \m{\varphi} \\[1em]
-    \mathrm{Var}[T(f_{\m{\theta}}(\m{y}))] &= \frac{1}{M}\sum_{i=1^{M} (T(f_{\m{\theta}}(\m{y}_i)) - \mathbb{E}[T(f_{\m{\theta}}(\m{y}))])^2.
-\end{align} 
-
-
-In order to estimate a stellar parameters $\m{\varphi}$ from a noisy spectrum, we consider the Fisher information matrix $\mathcal{I}_{\m{\varphi}}$, which quantifies the amount of information that a single noisy observation $\m{y}$ with its uncertainty vector $\m{\sigma}$ carries about the parameters $\m{\varphi}$. The Fisher information takes the matrix form of
+In order to estimate how well the atmospheric parameters can be inferred from a noisy spectrum, we consider the Fisher information matrix $\mathcal{I}_{\m{\varphi}}$, which quantifies the amount of information that a single noisy observation $\m{y}$ with its uncertainty vector $\m{\sigma}$ carries about the parameters. The Fisher information takes the matrix form of
 \begin{equation}
     \left[ \mathcal{I}_{\m{\varphi}}(\m{y}) \right]_{ij} =
         \mathbb{E}\!\left[
@@ -497,70 +483,86 @@ In order to estimate a stellar parameters $\m{\varphi}$ from a noisy spectrum, w
                 {\partial \log \mathcal{L}(\m{y}, \m{\sigma} \mid \m{\varphi})}
                 {\partial \varphi_j}
         \right],
+    \label{eq:fisher_information}
 \end{equation}
-where $\mathcal{L}(\m{y},\m{\sigma} \mid \m{\varphi})$ is the likelihood of the noisy observation $\m{y}$ given the stellar parameters $\m{\varphi}$ and the expectation is taken over all possible noise realizations of $\m{y}$, sampled from the noise model given by $\m{\sigma}$. The Fisher information matrix is a lower bound on the covariance of any unbiased estimator of $\m{\varphi}$ through the Cramér--Rao bound.
+where $\mathcal{L}(\m{y},\m{\sigma} \mid \m{\varphi})$ is the likelihood of the noisy observation $\m{y}$, given the stellar parameters $\m{\varphi}$. We remind the reader, that using the likelihood function implicitly assumes that we have a forward model to generate the data and the noise. In case of Eq.~\ref{eq:fisher_information}, the model provides the expected flux $\m{x}(\m{\varphi})$ at each wavelength bin. The expectation is taken over all possible noise realizations of $\m{x}(\m{\varphi})$, sampled from the Gaussian noise model parameterized by $\m{\sigma}$. The Fisher information matrix is a lower bound on the covariance of any unbiased estimator of $\m{\varphi}$ through the Cramér--Rao bound.
 
-To calculate how much information is carried by a spectrum about a single parameter $\varphi_1$, we still need to consider the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ and marginalize over the other parameters $\varphi_2,\dots,\varphi_k$. Although one could calculate the single parameter Fisher information by marginalizing the likelihood function over the rest of the model parameters $\m{\varphi}_{-1} = \varphi_2,\dots,\varphi_k$, the marginal would overestimate the information content of the spectrum about $\varphi_1$ because it ignores the degeneracies between the parameters. To understand this, consider the difference between fitting all parameters simultaneously and fitting only $\varphi_1$ while keeping the other parameters fixed (and assuming their values are known). Marginalizing the likelihood function is the equivalent of introducing a strong prior on the other parameters, since
+To calculate how much information is carried by a spectrum about a single parameter $\varphi_1$, we still need to consider the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ and sum up the information about the rest of the parameters $\varphi_2,\dots,\varphi_k$. When all parameters are estimated jointly, the information about a single parameter $\varphi_1$ can be written as
 \begin{equation}
-    \mathcal{L}_m(\m{y}\mid\varphi_1) = \int \mathcal{L}(\m{y}\mid\varphi_1, \m{\varphi}_{-1}) \, p(\m{\varphi}_{-1}) \, d\m{\varphi}_{-1},
+    \mathcal{I}_{\varphi_1} = \left[ \mathcal{I}_{\m{\varphi}}^{-1} \right]_{11}^{-1}.
+    \label{eq:fisher_information_1d}
 \end{equation}
-However, a strong prior, as its name shows, introduces extra, \textit{a priori} information that does not come from the spectrum itself.
+This follows from the fact that the variance of the maximum likelihood estimator of $\varphi_1$ is given by the $(1,1)$ entry of the inverse of the Fisher information matrix.
 
-Instead of marginalizing the likelihood function, one must \textit{profile} it over the other parameters. Profiling the likelihood function means that for each value of $\varphi_1$, we automatically maximize the likelihood over the other parameters $\varphi_2,\dots,\varphi_k$:
+One could calculate the single parameter Fisher information by using a likehood function marginalized over the rest of the model parameters $\m{\varphi}_{-1} = \varphi_2,\dots,\varphi_k$, in the form of
+\begin{equation}
+    \mathcal{L}_m(\m{y}\mid\varphi_1) = \int \mathcal{L}(\m{y}\mid\varphi_1, \m{\varphi}_{-1}) \, p(\m{\varphi}_{-1}) \, d\m{\varphi}_{-1}.
+\end{equation}
+Using the marginalized likelihood in the expression in Eq.~\ref{eq:fisher_information} would overestimate the information content of the spectrum about $\varphi_1$ because it ignores the degeneracies between the parameters and substitutes them with a prior. To understand this, consider the difference between fitting all parameters simultaneously and fitting only $\varphi_1$ while keeping the other parameters fixed and assuming their values are known. Marginalizing the likelihood function is the equivalent of introducing a strong prior on the rest of the parameters. However, a strong prior, as its name shows, introduces extra, \textit{a priori} information that does not come from the spectrum itself.
+
+In practice, instead of marginalizing the likelihood function, one usually \textit{profiles} it over some parameters. Profiling the likelihood function means that for each value of $\varphi_1$, we automatically maximize the likelihood over the rest of the parameters $\varphi_2,\dots,\varphi_k$:
 \begin{equation}
     \mathcal{L}_p(\m{y}\mid\varphi_1) = \max_{\m{\varphi}_{-1}} \mathcal{L}(\m{y}\mid\varphi_1,\m{\varphi}_{-1})
 \end{equation}
-This is the standard method of multivariate parameter estimation with template fitting, especially when other nuisance parameters are present, such as flux calibration coefficients or continuum normalization parameters \citep{2024Dobos_rv}.
+This is the standard method of multivariate parameter estimation with template fitting when nuisance parameters are present, such as flux calibration coefficients or continuum normalization parameters \citep{2024Dobos_rv}.
 
-Fortunately, by using a linear algebra equality, we can easily calculate the single-parameter Fisher information about $\varphi_1$ from the full Fisher information matrix $\mathcal{I}_{\m{\varphi}}$ by taking its inverse and then
-\begin{equation}
-    \mathcal{I}_{\varphi_1} = \left[ \mathcal{I}_{\m{\varphi}}^{-1} \right]_{11}^{-1}.
-\end{equation}
+Let us now consider the information extracted from a spectrum by an estimator $T$ that yields the parameter estimate $\hat{\m{\varphi}} = T(\m{y})$. $T$ is a sufficient statistic for $\hat{\m{\varphi}}$ if it contains all the information about $\m{\varphi}$ that is present in the spectrum, i.e. it can infer the parameters with maximum accuracy. According to the Cramér--Rao bound, the variance of the estimator is lower bounded by the inverse of the Fisher information about $\m{\varphi}$ as given by Eq.~\ref{eq:fisher_information}. For an estimator of a single parameter $\varphi_1$, the variance is lower bounded by the inverse of the single-parameter Fisher information given by Eq.~\ref{eq:fisher_information_1d}. 
 
-Let us now introduce a deterministic transformation $f_\theta$ that maps the noisy spectrum $\m{y}$ to a denoised spectrum $\hat{\m{x}} = f_\theta(\m{y})$. The transformation is deterministic because the denoiser is a neural network with fixed weights $\theta$ after training but it is not necessarily invertible, as in the case of the blindspot denoiser. For any deterministic transformation, the \textit{total} information about the $\m{\varphi}$ parameters in the denoised spectrum $\hat{\m{x}}$ cannot exceed the information in the noisy observation $\m{y}$. This is expressed by the data processing inequality
+Let $T$ be an estimator of the atmospheric parameters $\hat{\m{\varphi}} = T[\m{y}]$ which can be applied to the noisy spectrum $\m{y}$, as well as the denoised spectrum $\hat{\m{x}}$. One such estimator is the maximum likelihood estimator (MLE) used to fit templates to the observed spectra, but only if we assume that the templates are a perfect representation of the true spectra, the instrumental and atmospheric effects are perfectly modeled, and the noise model is correct. In practice, these assumptions are seldom satisfied, and template fitting using the maximum likelihood method is not a sufficient statistic for $\m{\varphi}$. The ideal case can be tested on simulated spectra, where the true parameters $\m{\varphi}$ and the clean flux are known.
+
+Recently, machine learning models have been used \ld{CITE} to estimate stellar parameters directly from the observed spectra, and these models, when deterministic, are estimators of $\hat{\m{\varphi}}$. Machine learning models are usually far from being sufficient statistics for $\hat{\m{\varphi}}$, as they are trained on a finite set of spectra and often do not generalize well to unseen or noisy data \ld{CITE}.
+
+From the aspect of denoising, the important question is whether the estimator $T$ can be applied to the denoised spectrum $\hat{\m{x}}$ to obtain a better estimate of $\hat{\m{\varphi}}$ than when applied to the noisy spectrum $\m{y}$. By better estimate, we mean an estimate with smaller variance and bias.
+
+The variance and the bias of the estimator, that estimates a single parameter $\hat{\varphi_1}$ only, can be written as
+\begin{align}
+    \mathrm{Var}[T(\m{x} + \m{\epsilon})] &= \mathbb{E}\!\left[(T(\m{x} + \m{\epsilon}) - \mathbb{E}[T(\m{x} + \m{\epsilon})])^2\right]
+    \label{eq:estimator_variance} \\[1em]
+    \mathrm{Bias}[T(\m{x} + \m{\epsilon})] &= \mathbb{E}[T(\m{x} + \m{\epsilon})] - \varphi_1,
+    \label{eq:estimator_bias}
+\end{align}
+where $\varphi_1$ is the true value of the parameter and the expectation is taken over the noise realizations $\m{\epsilon}$.
+
+We know from information theory that data processing cannot increase the information content of the data. Let $f_\theta$ be a deterministic transformation  that maps the noisy spectrum $\m{y}$ to a denoised spectrum $\hat{\m{x}} = f_\theta(\m{y})$. The transformation is deterministic because the denoiser is a neural network with fixed weights $\theta$ after training, but it is not necessarily invertible, as in the case of the blindspot denoiser. For any deterministic transformation, the \textit{total} information about the $\m{\varphi}$ parameters in the denoised spectrum $\hat{\m{x}}$ cannot exceed the information in the noisy observation $\m{y}$. This is expressed by the data processing inequality
 \begin{equation}
     \mathcal{I}_{\m{\varphi}}(f_\theta(\m{y}))
         % = \mathcal{I}_{\m{\varphi}}(\hat{\m{x}})
         \preceq \mathcal{I}_{\varphi}(\m{y}),
     \label{eq:data_processing_inequality}
 \end{equation}
-which inequality is strict unless $f_{\m{\theta}}$ is \ld{invertible and it does not depend on $\m{\varphi}$}.
-
-Note, that Eq.~\ref{eq:data_processing_inequality} expresses the inequality of positive definite matrices, and the $\preceq$ symbol denotes the Loewner partial order, i.e.
+which inequality is strict unless $f_{\m{\theta}}$ is \ld{invertible and it does not depend on $\m{\varphi}$}. Note, that Eq.~\ref{eq:data_processing_inequality} expresses the inequality of positive definite matrices, and the $\preceq$ symbol denotes the Loewner partial order, i.e.
 $
     \m{A} \preceq \m{B} \Leftrightarrow \m{v}^T \m{A} \m{v} \leq \m{v}^T \m{B} \m{v}, \forall \m{v}.
 $
 
+While we know the likelihood function $\mathcal{L}(\m{y},\m{\sigma}\mid\m{\varphi})$ of the noisy observation $\m{y}$, since we know how to model a spectrum with parameters $\m{\varphi}$ and we have an assumption about the noise model, we do not know the likelihood function of the denoised spectrum $\mathcal{L}(\hat{\m{x}},\hat{\m{\sigma}}\mid\m{\varphi})$. The structure of this likelihood function can be significantly different from that of the noisy observation, and it is not guaranteed to be a multivariate Gaussian even if the noise in $\m{y}$ is originally Gaussian. The denoiser can introduce correlations in the remaining noise between pixels, and it can also introduce bias in the denoised flux. Therefore, calculating the Fisher information from the denoised spectrum is generally not feasible.
 
+% \ld{Do something with it.} Since the denoised spectrum is in the domain of the original likelihood function, and we assume that the noise on $\hat{\m{x}}$ is approximately Gaussian and known, we can use the same $\mathcal{L}(\m{y},\m{\sigma}\mid\m{\varphi})$ to estimate the Fisher information about $\varphi$ from the denoised spectrum $\hat{\m{x}} = f_\theta(\m{y})$ as
+% \begin{equation}
+%     \begin{split}
+%     \mathcal{I}_{\m{\varphi}}(\hat{\m{x}}) & \approx \\
+%         & \mathbb{E}\!\left[
+%             \frac
+%                 {\partial \log \mathcal{L}(\m{y}\mid\m{\varphi}, f_{\m{\theta}}(\m{y}) = \hat{\m{x}})}
+%                 {\partial \varphi_i} 
+%         \right. \times \\
+%         & \left.
+%             \quad\quad\quad\quad
+%             \frac
+%                 {\partial \log \mathcal{L}(\m{y}\mid\m{\varphi}, f_{\m{\theta}}(\m{y}) = \hat{\m{x}})}
+%                 {\partial \varphi_j}
+%         \right].
+%     \end{split}
+% \end{equation}
+% What this means is that the likelihood function for $\hat{\m{x}}$ is similar to that of $\m{y}$ (if we ignore that the denoiser changes the noise model), but it has to be conditioned on $\m{x}' = \hat{\m{x}} = f_\theta(\m{y})$, i.e. the expectation is now taken over the noise realizations of $\m{y}$ that lead to the same denoised spectrum $\hat{\m{x}}$. Note, that the Fisher information is still evaluated about the same $\m{\varphi}$, even if the MLE of $\m{\varphi}$ for $\hat{\m{x}}$ is different. The Fisher information about $\m{\varphi}$ from the denoised spectrum is therefore a lower bound on the Fisher information from the noisy observation, and it can be strictly smaller if the denoiser is not invertible.
 
-The Cramér--Rao bound states that the variance of any unbiased estimator is lower bounded by the inverse of the Fisher information.
-
-The answer is that it cannot, because the Fisher information about $\m{\varphi}$ in the denoised spectrum $\hat{\m{x}}$ is always less than or equal to that in the noisy spectrum $\m{y}$, as expressed by Eq.~\ref{eq:data_processing_inequality}. Therefore, any estimator $T$ applied to $\hat{\m{x}}$ cannot yield a lower variance estimate of $\m{\varphi}$ than when applied to $\m{y}$.
-
-\ld{Verify this statement}. While we know the likelihood function $\mathcal{L}(\m{y},\m{\sigma}\mid\m{\varphi})$ of the noisy observation $\m{y}$, since we know how to model a spectrum with parameters $\m{\varphi}$ and we have an assumption about the noise model, we do not know the likelihood function of the denoised spectrum $\mathcal{L}(\hat{\m{x}},\hat{\m{\sigma}}\mid\m{\varphi})$. The structure of this likelihood function can be significantly different from that of the noisy observation, and it is not guaranteed to be a multivariate Gaussian even if the noise in $\m{y}$ is originally Gaussian. The denoiser can introduce correlations between pixels, and it can also introduce bias in the denoised spectrum. Therefore, calculating the Fisher information from the denoised spectrum is generally not straightforward.
-
-\ld{Do something with it.} Since the denoised spectrum is in the domain of the original likelihood function, and we assume that the noise on $\hat{\m{x}}$ is approximately Gaussian and known, we can use the same $\mathcal{L}(\m{y},\m{\sigma}\mid\m{\varphi})$ to estimate the Fisher information about $\varphi$ from the denoised spectrum $\hat{\m{x}} = f_\theta(\m{y})$ as
-\begin{equation}
-    \begin{split}
-    \mathcal{I}_{\m{\varphi}}(\hat{\m{x}}) & \approx \\
-        & \mathbb{E}\!\left[
-            \frac
-                {\partial \log \mathcal{L}(\m{y}\mid\m{\varphi}, f_{\m{\theta}}(\m{y}) = \hat{\m{x}})}
-                {\partial \varphi_i} 
-        \right. \times \\
-        & \left.
-            \quad\quad\quad\quad
-            \frac
-                {\partial \log \mathcal{L}(\m{y}\mid\m{\varphi}, f_{\m{\theta}}(\m{y}) = \hat{\m{x}})}
-                {\partial \varphi_j}
-        \right].
-    \end{split}
-\end{equation}
-What this means is that the likelihood function for $\hat{\m{x}}$ is similar to that of $\m{y}$ (if we ignore that the denoiser changes the noise model), but it has to be conditioned on $\m{x}' = \hat{\m{x}} = f_\theta(\m{y})$, i.e. the expectation is now taken over the noise realizations of $\m{y}$ that lead to the same denoised spectrum $\hat{\m{x}}$. Note, that the Fisher information is still evaluated about the same $\m{\varphi}$, even if the MLE of $\m{\varphi}$ for $\hat{\m{x}}$ is different. The Fisher information about $\m{\varphi}$ from the denoised spectrum is therefore a lower bound on the Fisher information from the noisy observation, and it can be strictly smaller if the denoiser is not invertible.
-
-A deterministic denoiser cannot increase the Fisher information carried by a single observed spectrum, neither for the full parameter vector nor for a profiled parameter of interest. Therefore, any downstream improvement for a parameter such as $\varphi_1$ should be interpreted not as an increase in Fisher information, but as an estimator-dependent bias.
+The formulae in Eq.~\ref{eq:estimator_variance}~and~\ref{eq:estimator_bias} can be evaluated on simulated spectra, where the true parameters $\m{\varphi}$ and the clean flux are known, by taking the expectation over many noise realizations of the same clean spectrum. The variance and bias can be evaluated for both the noisy spectrum $\m{y}$ and the denoised spectrum $\hat{\m{x}}$ to compare the performance of the estimator $T$ on both types of spectra with a given set of $\m{\varphi}$. Alternatively, we can apply the estimator to an ensemble of simulated spectra with different $\m{\varphi}$ values and evaluate the variance and bias of the estimator over the ensemble, in bins of the true parameter values.
 
 \subsection{Denoiser-introduced bias}
+
+It follows from the data processing inequality in Eq.~\ref{eq:data_processing_inequality} that the Fisher information about $\m{\varphi}$ cannot increase by denoising, and therefore the variance of any unbiased, sufficient statistic estimator cannot decrease. However, the denoiser can be beneficial if the estimator is not a sufficient statistic, and it is not unbiased for noisy spectra, i.e. the estimator is not robust to noise. In this case, the denoiser can reduce the variance of the estimator, sometimes at the cost of introducing bias. The bias introduced by the denoiser can eventually cancel out the bias of the estimator itself in case of noisy spectra.
+
+*** *** *** 
 
 What the denoiser can exploit is not extra information in that one spectrum, but the ensemble information contained in the training set. Across training examples, the network sees many independent noise realizations added to synthetic spectra generated from the same physical support. Therefore, the denoiser learns a population prior for not only what the spectra typically look like, but also how their physical parameters are distributed. At inference time, this prior can shrink a noisy realization toward the high-probability manifold of the training ensemble, reducing estimator variance at the cost of bias. Any apparent downstream gain in parameter variance must therefore be interpreted as a bias--variance tradeoff induced by the training distribution, not as creation of new information in a single observation.
 
